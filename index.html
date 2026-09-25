@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Clube da Trufa (Coren)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Clube da Trufa 🍫</h1>
+        <p class="subtitle">Compre 10 trufas no mês e ganhe 1 grátis!</p>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="mudarAba('mes')">🏆 Ranking do Mês</button>
+            <button class="tab-btn" onclick="mudarAba('geral')">⭐ Histórico Geral</button>
+        </div>
+
+        <div id="status" class="loading">A atualizar pontuações...</div>
+
+        <!-- Listas onde o JavaScript injetará os cards -->
+        <div id="lista-mes" class="ranking-list active"></div>
+        <div id="lista-geral" class="ranking-list"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
