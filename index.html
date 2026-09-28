@@ -14,6 +14,20 @@
         <h1>Clube da Trufa 🍫</h1>
         <p class="subtitle">Compre 10 trufas no mês e ganhe 1 grátis!</p>
 
+        <!-- Banner Mini Fliperama (fixo no topo) -->
+        <div class="fliperama-banner" id="fliperama-section">
+            <div class="fliperama-banner-left">
+                <span class="fliperama-banner-icon">🕹️</span>
+                <div class="fliperama-banner-text">
+                    <strong>Hora de se divertir!</strong>
+                    <span>Saboreie a trufa e jogue o nosso mini fliperama 🍫🎮</span>
+                </div>
+            </div>
+            <a href="https://barroca07.github.io/React_Fliperama/" target="_blank" rel="noopener noreferrer" class="fliperama-btn-compact" id="btn-fliperama">
+                🎮 Jogar
+            </a>
+        </div>
+
         <div class="tabs">
             <button class="tab-btn active" onclick="mudarAba('mes')">🏆 Ranking do Mês</button>
             <button class="tab-btn" onclick="mudarAba('geral')">⭐ Histórico Geral</button>
@@ -24,16 +38,6 @@
         <!-- Listas onde o JavaScript injetará os cards -->
         <div id="lista-mes" class="ranking-list active"></div>
         <div id="lista-geral" class="ranking-list"></div>
-
-        <!-- Seção do Mini Fliperama -->
-        <div class="fliperama-section" id="fliperama-section">
-            <div class="fliperama-icon">🕹️</div>
-            <h2 class="fliperama-title">Hora de se divertir!</h2>
-            <p class="fliperama-msg">Enquanto saboreia a sua trufa, que tal um joguinho? Jogue o nosso mini fliperama e divirta-se! 🍫🎮</p>
-            <a href="https://barroca07.github.io/React_Fliperama/" target="_blank" rel="noopener noreferrer" class="fliperama-btn" id="btn-fliperama">
-                <span class="fliperama-btn-icon">🎮</span> Jogar Agora
-            </a>
-        </div>
     </div>
 
     <script src="script.js"></script>
