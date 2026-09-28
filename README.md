@@ -4,7 +4,7 @@ Um ecossistema completo de gestão financeira e fidelização de clientes, const
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## Arquitetura do Sistema
 
 O projeto foi desenhado em três camadas distintas para garantir segurança dos dados, facilidade de uso operacional e escalabilidade web.
 
@@ -53,7 +53,7 @@ A interface apresenta dois modos de visualização, alternáveis por abas (tabs)
 
 A troca entre abas é gerida pela função `mudarAba()`, que manipula classes CSS (`active`) para alternar visibilidade sem recarregar a página.
 
-#### 🥇 Sistema de Medalhas (Pódio Visual)
+#### Sistema de Medalhas (Pódio Visual)
 Cada posição no ranking recebe um tratamento visual distinto:
 | Posição | Estilo | Cor |
 |---------|--------|-----|
@@ -64,7 +64,7 @@ Cada posição no ranking recebe um tratamento visual distinto:
 
 Os badges circulares são renderizados dinamicamente com classes CSS condicionais (`pos-1`, `pos-2`, `pos-3`, `pos-geral`).
 
-#### 📊 Barra de Progresso Promocional (Compre 10, Ganhe 1)
+#### Barra de Progresso Promocional (Compre 10, Ganhe 1)
 Cada cartão de cliente inclui um indicador visual de progresso em direção à trufa grátis:
 * **Cálculo modular:** `trufas % 10` — determina quantas trufas faltam no ciclo atual de 10.
 * **Barra de preenchimento:** Animada com `transition: width 0.5s ease`, preenchendo proporcionalmente (0% a 100%).
@@ -78,7 +78,7 @@ Um banner compacto posicionado no topo da página (entre o cabeçalho e as abas 
 * **Botão "Jogar":** Abre o fliperama em nova aba (`target="_blank"`), com gradiente dourado e animação de pulse para chamar a atenção.
 * **Link:** [React Fliperama](https://barroca07.github.io/React_Fliperama/)
 
-#### 🔗 Consumo da API (Fetch Assíncrono)
+#### Consumo da API (Fetch Assíncrono)
 O `script.js` faz uma requisição `GET` assíncrona ao endpoint do Google Apps Script no carregamento da página:
 * **Loading state:** Exibe a mensagem "A atualizar pontuações..." enquanto aguarda a resposta da API.
 * **Tratamento de erro:** Em caso de falha na requisição, substitui o indicador de loading por uma mensagem de erro amigável.
@@ -116,7 +116,7 @@ O projeto segue um design system coeso baseado numa paleta temática de chocolat
 
 ---
 
-## 🚀 Como Executar Localmente
+## Como Executar Localmente
 
 1. Clone o repositório:
    ```bash

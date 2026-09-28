@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Jogo da Trufa 🍫 - Labirinto</title>
+    <meta name="description" content="Encontre a trufa no labirinto antes que o tempo acabe! Um mini jogo do Clube da Trufa.">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="game-wrapper" id="game-wrapper">
+        <h1 class="game-title">🍫 Jogo da Trufa</h1>
+        <p class="game-subtitle">Encontre a trufa no labirinto antes que o tempo acabe!</p>
+
+        <div class="game-container" id="game-container">
+
+            <!-- Barra de Tempo -->
+            <div class="timer-bar-container" id="timer-container">
+                <div class="timer-bar" id="timer-bar"></div>
+                <span class="timer-text" id="timer-text">⏱ 60s</span>
+            </div>
+
+            <!-- Canvas do Jogo -->
+            <canvas id="game-canvas"></canvas>
+
+            <!-- Mensagem de Estado -->
+            <div class="game-status" id="game-status"></div>
+
+            <!-- Controlos Direcionais (D-Pad) -->
+            <div class="game-controls" id="game-controls">
+                <div class="controls-row">
+                    <button class="ctrl-btn" id="btn-up" aria-label="Mover para cima">▲</button>
+                </div>
+                <div class="controls-row">
+                    <button class="ctrl-btn" id="btn-left" aria-label="Mover para esquerda">◄</button>
+                    <button class="ctrl-btn ctrl-btn-center" id="btn-down" aria-label="Mover para baixo">▼</button>
+                    <button class="ctrl-btn" id="btn-right" aria-label="Mover para direita">►</button>
+                </div>
+            </div>
+
+            <!-- Botão Novo Jogo -->
+            <button class="btn-new-game" id="btn-new-game">🔄 Novo Labirinto</button>
+        </div>
+
+        <p class="game-hint" id="game-hint">💡 Use as setas do teclado ou os botões para se mover</p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
