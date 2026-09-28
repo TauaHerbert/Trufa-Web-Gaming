@@ -171,3 +171,102 @@ h1 {
     font-style: italic;
     padding: 30px;
 }
+
+/* ===== Seção Mini Fliperama ===== */
+.fliperama-section {
+    margin-top: 30px;
+    padding: 25px 20px;
+    background: linear-gradient(135deg, #6B4E3D 0%, #8B6F5E 50%, #D4A373 100%);
+    border-radius: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(107, 78, 61, 0.3);
+}
+
+/* Brilho decorativo no fundo */
+.fliperama-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+    animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(10%, 10%); }
+}
+
+.fliperama-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    animation: bounce 2s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.fliperama-title {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.fliperama-msg {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 18px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.fliperama-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #4a3728;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 50px;
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    transition: all 0.3s ease;
+    animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.fliperama-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.6);
+}
+
+.fliperama-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.fliperama-btn-icon {
+    font-size: 20px;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); }
+    50% { box-shadow: 0 4px 25px rgba(255, 215, 0, 0.7); }
+}

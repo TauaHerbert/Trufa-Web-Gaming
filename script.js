@@ -1,4 +1,3 @@
-// --- COLE A SUA URL NA LINHA ABAIXO ---
 const API_URL = 'https://script.google.com/macros/s/AKfycbyqO36T5Jy_tgDychKYEzYXwl65maWWscYYsqndP-PfkQvr2qqocQC7di8PnImoJEyh/exec';
 
 let dadosGlobais = [];
