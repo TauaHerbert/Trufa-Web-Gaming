@@ -3,45 +3,95 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Ranking - Clube da Trufa (Coren)</title>
+    <meta name="description" content="Ranking do Clube da Trufa com mini jogo do labirinto. Compre 10 trufas e ganhe 1 grátis!">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <div class="container">
-        <h1>Clube da Trufa 🍫</h1>
-        <p class="subtitle">Compre 10 trufas no mês e ganhe 1 grátis!</p>
+    <div class="page-layout" id="page-layout">
 
-        <!-- Banner Mini Fliperama (fixo no topo) -->
-        <div class="fliperama-banner" id="fliperama-section">
-            <div class="fliperama-banner-left">
-                <span class="fliperama-banner-icon">🕹️</span>
-                <div class="fliperama-banner-text">
-                    <strong>Hora de aproveitar!</strong>
-                    <span>Saboreie a trufa e divirta-se no mini fliperama 🍫🎮</span>
+        <!-- ===== Sidebar: Jogo da Trufa ===== -->
+        <aside class="game-sidebar" id="game-sidebar">
+            <div class="game-wrapper" id="game-wrapper">
+                <h2 class="game-title">🍫 Jogo da Trufa</h2>
+                <p class="game-subtitle">Encontre a trufa no labirinto antes que o tempo acabe!</p>
+
+                <div class="game-container" id="game-container">
+
+                    <!-- Barra de Tempo -->
+                    <div class="timer-bar-container" id="timer-container">
+                        <div class="timer-bar" id="timer-bar"></div>
+                        <span class="timer-text" id="timer-text">⏱ 45s</span>
+                    </div>
+
+                    <!-- Canvas do Jogo -->
+                    <canvas id="game-canvas"></canvas>
+
+                    <!-- Mensagem de Estado -->
+                    <div class="game-status" id="game-status"></div>
+
+                    <!-- Controlos Direcionais (D-Pad) -->
+                    <div class="game-controls" id="game-controls">
+                        <div class="controls-row">
+                            <button class="ctrl-btn" id="btn-up" aria-label="Mover para cima">▲</button>
+                        </div>
+                        <div class="controls-row">
+                            <button class="ctrl-btn" id="btn-left" aria-label="Mover para esquerda">◄</button>
+                            <button class="ctrl-btn ctrl-btn-center" id="btn-down" aria-label="Mover para baixo">▼</button>
+                            <button class="ctrl-btn" id="btn-right" aria-label="Mover para direita">►</button>
+                        </div>
+                    </div>
+
+                    <!-- Botão Novo Jogo -->
+                    <button class="btn-new-game" id="btn-new-game">🔄 Novo Labirinto</button>
                 </div>
+
+                <p class="game-hint" id="game-hint">💡 Use as setas do teclado ou os botões para se mover</p>
             </div>
-            <a href="https://barroca07.github.io/React_Fliperama/" target="_blank" rel="noopener noreferrer"
-                class="fliperama-btn-compact" id="btn-fliperama">
-                🎮 Jogar
-            </a>
-        </div>
+        </aside>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="mudarAba('mes')">🏆 Ranking do Mês</button>
-            <button class="tab-btn" onclick="mudarAba('geral')">⭐ Histórico Geral</button>
-        </div>
+        <!-- ===== Conteúdo Principal: Ranking ===== -->
+        <main class="main-content" id="main-content">
+            <div class="container">
+                <h1>Clube da Trufa 🍫</h1>
+                <p class="subtitle">Compre 10 trufas no mês e ganhe 1 grátis!</p>
 
-        <div id="status" class="loading">A atualizar pontuações...</div>
+                <!-- Banner Mini Fliperama (fixo no topo) -->
+                <div class="fliperama-banner" id="fliperama-section">
+                    <div class="fliperama-banner-left">
+                        <span class="fliperama-banner-icon">🕹️</span>
+                        <div class="fliperama-banner-text">
+                            <strong>Hora de aproveitar!</strong>
+                            <span>Saboreie a trufa e divirta-se no mini fliperama 🍫🎮</span>
+                        </div>
+                    </div>
+                    <a href="https://barroca07.github.io/React_Fliperama/" target="_blank" rel="noopener noreferrer"
+                        class="fliperama-btn-compact" id="btn-fliperama">
+                        🎮 Jogar
+                    </a>
+                </div>
 
-        <!-- Listas onde o JavaScript injetará os cards -->
-        <div id="lista-mes" class="ranking-list active"></div>
-        <div id="lista-geral" class="ranking-list"></div>
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="mudarAba('mes')">🏆 Ranking do Mês</button>
+                    <button class="tab-btn" onclick="mudarAba('geral')">⭐ Histórico Geral</button>
+                </div>
+
+                <div id="status" class="loading">A atualizar pontuações...</div>
+
+                <!-- Listas onde o JavaScript injetará os cards -->
+                <div id="lista-mes" class="ranking-list active"></div>
+                <div id="lista-geral" class="ranking-list"></div>
+            </div>
+        </main>
+
     </div>
 
+    <!-- Scripts -->
     <script src="script.js"></script>
+    <script src="jogo-trufa/script.js"></script>
 </body>
 
 </html>

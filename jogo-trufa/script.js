@@ -6,18 +6,18 @@
 
 // ===== Configuração =====
 const CONFIG = {
-    mazeRows: 14,         // Células do labirinto (linhas)
-    mazeCols: 14,         // Células do labirinto (colunas)
-    cellSize: 16,         // Tamanho de cada célula em pixels
-    gameDuration: 60,     // Tempo limite em segundos
-    warningTime: 15,      // Segundos para ativar alerta visual
+    mazeRows: 20,         // Células do labirinto (linhas)
+    mazeCols: 20,         // Células do labirinto (colunas)
+    cellSize: 14,         // Tamanho de cada célula em pixels
+    gameDuration: 45,     // Tempo limite em segundos
+    warningTime: 10,      // Segundos para ativar alerta visual
 };
 
 // Dimensões derivadas da grade (cada célula vira 2 posições + 1 borda)
-const GRID_H = CONFIG.mazeRows * 2 + 1;   // 15
-const GRID_W = CONFIG.mazeCols * 2 + 1;    // 15
-const CANVAS_W = GRID_W * CONFIG.cellSize; // 300
-const CANVAS_H = GRID_H * CONFIG.cellSize; // 300
+const GRID_H = CONFIG.mazeRows * 2 + 1;   // 41
+const GRID_W = CONFIG.mazeCols * 2 + 1;    // 41
+const CANVAS_W = GRID_W * CONFIG.cellSize; // 574
+const CANVAS_H = GRID_H * CONFIG.cellSize; // 574
 
 // ===== Paleta de Cores =====
 const CORES = {
@@ -174,7 +174,7 @@ function criarCaminhosAlternativos() {
 
     // Embaralhar e remover ~30% das paredes removíveis
     embaralhar(paredesRemoviveis);
-    var numRemover = Math.floor(paredesRemoviveis.length * 0.30);
+    var numRemover = Math.floor(paredesRemoviveis.length * 0.12);
 
     for (var i = 0; i < numRemover; i++) {
         labirinto[paredesRemoviveis[i][0]][paredesRemoviveis[i][1]] = 0;
@@ -185,6 +185,41 @@ function criarCaminhosAlternativos() {
 /* ================================================
    RENDERIZAÇÃO (Canvas 2D)
    ================================================ */
+
+// Variável para animação de brilho pulsante
+let brilhoFase = 0;
+let animacaoId = null;
+
+/**
+ * Loop de animação contínuo para efeitos de brilho pulsante.
+ */
+function loopAnimacao() {
+    brilhoFase += 0.04;
+    if (brilhoFase > Math.PI * 2) brilhoFase -= Math.PI * 2;
+    desenhar();
+    if (!jogoTerminou) {
+        animacaoId = requestAnimationFrame(loopAnimacao);
+    }
+}
+
+/**
+ * Inicia o loop de animação de brilho.
+ */
+function iniciarAnimacao() {
+    if (animacaoId) cancelAnimationFrame(animacaoId);
+    brilhoFase = 0;
+    animacaoId = requestAnimationFrame(loopAnimacao);
+}
+
+/**
+ * Para o loop de animação.
+ */
+function pararAnimacao() {
+    if (animacaoId) {
+        cancelAnimationFrame(animacaoId);
+        animacaoId = null;
+    }
+}
 
 /**
  * Desenha todo o estado atual do jogo no canvas.
@@ -211,18 +246,34 @@ function desenharLabirinto() {
 }
 
 /**
- * Desenha um brilho suave ao redor da saída para guiar o jogador.
+ * Desenha um brilho suave e pulsante ao redor da saída para guiar o jogador.
  */
 function desenharBrilhoSaida() {
     const cx = saidaX * CONFIG.cellSize + CONFIG.cellSize / 2;
     const cy = saidaY * CONFIG.cellSize + CONFIG.cellSize / 2;
-    const raio = CONFIG.cellSize * 1.5;
+    const pulso = 0.5 + Math.sin(brilhoFase) * 0.3;
+    const raio = CONFIG.cellSize * 3.0;
 
+    // Camada de brilho externo (dourado pulsante)
     const gradiente = ctx.createRadialGradient(cx, cy, 2, cx, cy, raio);
-    gradiente.addColorStop(0, CORES.saidaGlow);
+    gradiente.addColorStop(0, 'rgba(212, 163, 115, ' + (0.5 * pulso) + ')');
+    gradiente.addColorStop(0.5, 'rgba(212, 163, 115, ' + (0.2 * pulso) + ')');
     gradiente.addColorStop(1, 'transparent');
 
     ctx.fillStyle = gradiente;
+    ctx.fillRect(
+        (saidaX - 3) * CONFIG.cellSize,
+        (saidaY - 3) * CONFIG.cellSize,
+        CONFIG.cellSize * 7,
+        CONFIG.cellSize * 7
+    );
+
+    // Camada interna (brilho branco intenso)
+    const brilhoInterno = ctx.createRadialGradient(cx, cy, 1, cx, cy, CONFIG.cellSize * 1.2);
+    brilhoInterno.addColorStop(0, 'rgba(255, 255, 220, ' + (0.4 * pulso) + ')');
+    brilhoInterno.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = brilhoInterno;
     ctx.fillRect(
         (saidaX - 1) * CONFIG.cellSize,
         (saidaY - 1) * CONFIG.cellSize,
@@ -232,86 +283,136 @@ function desenharBrilhoSaida() {
 }
 
 /**
- * Desenha a trufa (chocolate) na posição de saída.
+ * Desenha a trufa (chocolate) na posição de saída — maior e com brilho.
  */
 function desenharTrufa(gx, gy) {
     const cx = gx * CONFIG.cellSize + CONFIG.cellSize / 2;
     const cy = gy * CONFIG.cellSize + CONFIG.cellSize / 2;
-    const raio = CONFIG.cellSize * 0.35;
+    const raio = CONFIG.cellSize * 0.48;
+    const pulso = 0.7 + Math.sin(brilhoFase * 1.5) * 0.3;
 
-    // Sombra
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    // Halo dourado pulsante ao redor da trufa
+    ctx.save();
+    ctx.shadowColor = 'rgba(212, 163, 115, ' + pulso + ')';
+    ctx.shadowBlur = 10 + Math.sin(brilhoFase) * 5;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Sombra no chão
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
     ctx.beginPath();
-    ctx.arc(cx + 1, cy + 1, raio, 0, Math.PI * 2);
+    ctx.arc(cx + 1, cy + 2, raio * 0.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // Corpo principal
+    // Corpo principal da trufa
     ctx.fillStyle = CORES.trufa;
     ctx.beginPath();
     ctx.arc(cx, cy, raio, 0, Math.PI * 2);
     ctx.fill();
 
-    // Brilho interno
+    // Contorno
+    ctx.strokeStyle = '#5a3d2e';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Brilho interno (reflexo quente)
     ctx.fillStyle = CORES.trufaBrilho;
     ctx.beginPath();
-    ctx.arc(cx - raio * 0.15, cy - raio * 0.15, raio * 0.5, 0, Math.PI * 2);
+    ctx.arc(cx - raio * 0.12, cy - raio * 0.12, raio * 0.55, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ponto de luz
-    ctx.fillStyle = CORES.trufaGloss;
+    // Ponto de luz especular
+    ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.35 + Math.sin(brilhoFase * 2) * 0.2) + ')';
     ctx.beginPath();
-    ctx.arc(cx - raio * 0.25, cy - raio * 0.3, raio * 0.2, 0, Math.PI * 2);
+    ctx.arc(cx - raio * 0.25, cy - raio * 0.3, raio * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Segundo ponto de luz menor
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.arc(cx + raio * 0.2, cy + raio * 0.15, raio * 0.12, 0, Math.PI * 2);
     ctx.fill();
 }
 
 /**
- * Desenha o carro (jogador) com indicador de direção.
+ * Desenha o carro (jogador) com indicador de direção — maior e com brilho.
  */
 function desenharCarro(gx, gy) {
     const x = gx * CONFIG.cellSize;
     const y = gy * CONFIG.cellSize;
     const s = CONFIG.cellSize;
-    const m = 3; // margem interna
+    const m = 1; // margem interna reduzida (era 3, agora 1)
+    const pulso = 0.6 + Math.sin(brilhoFase * 1.2 + 1) * 0.4;
 
-    // Corpo do carro
+    // Halo luminoso pulsante ao redor do jogador
+    ctx.save();
+    ctx.shadowColor = 'rgba(230, 126, 34, ' + pulso + ')';
+    ctx.shadowBlur = 8 + Math.sin(brilhoFase) * 4;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Corpo do carro (maior com margem reduzida)
     ctx.fillStyle = CORES.jogador;
-    ctx.fillRect(x + m, y + m, s - m * 2, s - m * 2);
+    const raioRect = 3;
+    roundRect(ctx, x + m, y + m, s - m * 2, s - m * 2, raioRect);
+    ctx.fill();
 
     // Contorno
     ctx.strokeStyle = CORES.jogadorBorda;
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + m, y + m, s - m * 2, s - m * 2);
+    ctx.stroke();
+
+    ctx.restore();
 
     // Indicador de direção (triângulo branco apontando para onde o carro se move)
     ctx.fillStyle = CORES.jogadorFrente;
     const centro = s / 2;
-    const t = 3.5; // tamanho do triângulo
+    const t = 4; // tamanho do triângulo (era 3.5)
 
     ctx.beginPath();
     switch (direcao) {
         case 'cima':
-            ctx.moveTo(x + centro, y + m + 2);
-            ctx.lineTo(x + centro - t, y + m + 2 + t * 1.2);
-            ctx.lineTo(x + centro + t, y + m + 2 + t * 1.2);
+            ctx.moveTo(x + centro, y + m + 1);
+            ctx.lineTo(x + centro - t, y + m + 1 + t * 1.3);
+            ctx.lineTo(x + centro + t, y + m + 1 + t * 1.3);
             break;
         case 'baixo':
-            ctx.moveTo(x + centro, y + s - m - 2);
-            ctx.lineTo(x + centro - t, y + s - m - 2 - t * 1.2);
-            ctx.lineTo(x + centro + t, y + s - m - 2 - t * 1.2);
+            ctx.moveTo(x + centro, y + s - m - 1);
+            ctx.lineTo(x + centro - t, y + s - m - 1 - t * 1.3);
+            ctx.lineTo(x + centro + t, y + s - m - 1 - t * 1.3);
             break;
         case 'esquerda':
-            ctx.moveTo(x + m + 2, y + centro);
-            ctx.lineTo(x + m + 2 + t * 1.2, y + centro - t);
-            ctx.lineTo(x + m + 2 + t * 1.2, y + centro + t);
+            ctx.moveTo(x + m + 1, y + centro);
+            ctx.lineTo(x + m + 1 + t * 1.3, y + centro - t);
+            ctx.lineTo(x + m + 1 + t * 1.3, y + centro + t);
             break;
         case 'direita':
-            ctx.moveTo(x + s - m - 2, y + centro);
-            ctx.lineTo(x + s - m - 2 - t * 1.2, y + centro - t);
-            ctx.lineTo(x + s - m - 2 - t * 1.2, y + centro + t);
+            ctx.moveTo(x + s - m - 1, y + centro);
+            ctx.lineTo(x + s - m - 1 - t * 1.3, y + centro - t);
+            ctx.lineTo(x + s - m - 1 - t * 1.3, y + centro + t);
             break;
     }
     ctx.closePath();
     ctx.fill();
+}
+
+/**
+ * Desenha um retângulo com cantos arredondados.
+ */
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
 }
 
 
@@ -414,10 +515,12 @@ function pararTimer() {
 function vencer() {
     jogoTerminou = true;
     pararTimer();
+    pararAnimacao();
 
     const tempoGasto = CONFIG.gameDuration - tempoRestante;
     statusEl.textContent = '🎉 Encontrou a trufa em ' + tempoGasto + 's!';
     statusEl.className = 'game-status win';
+    desenhar();
 }
 
 /**
@@ -426,6 +529,7 @@ function vencer() {
 function perder() {
     jogoTerminou = true;
     pararTimer();
+    pararAnimacao();
 
     statusEl.textContent = '⏰ Tempo esgotado! Tente novamente.';
     statusEl.className = 'game-status lose';
@@ -447,6 +551,7 @@ function novoJogo() {
     gerarLabirinto();
     desenhar();
     iniciarTimer();
+    iniciarAnimacao();
 }
 
 

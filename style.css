@@ -14,11 +14,33 @@ body {
     color: var(--text);
     margin: 0;
     padding: 20px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== Layout de Página (2 colunas) ===== */
+.page-layout {
+    display: flex;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: flex-start;
+}
+
+/* ===== Sidebar do Jogo ===== */
+.game-sidebar {
+    position: sticky;
+    top: 20px;
+    flex-shrink: 0;
+    width: 380px;
+}
+
+/* ===== Conteúdo Principal ===== */
+.main-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .container {
-    max-width: 600px;
-    margin: 0 auto;
     background: white;
     padding: 20px 30px;
     border-radius: 15px;
@@ -280,8 +302,249 @@ h1 {
     50% { box-shadow: 0 3px 20px rgba(255, 215, 0, 0.7); }
 }
 
-/* Responsivo: empilha no mobile estreito */
-@media (max-width: 400px) {
+
+/* ====================================================
+   ESTILOS DO JOGO DA TRUFA (Labirinto) - Integrado
+   ==================================================== */
+
+.game-wrapper {
+    text-align: center;
+    width: 100%;
+}
+
+.game-title {
+    font-size: 20px;
+    color: #6B4E3D;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+    text-align: center;
+}
+
+.game-subtitle {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.game-container {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(107, 78, 61, 0.15);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ===== Barra do Temporizador ===== */
+.timer-bar-container {
+    width: 100%;
+    height: 24px;
+    background: #f0e4d7;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.timer-bar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #D4A373, #e8c98e);
+    border-radius: 12px;
+    transition: width 0.4s linear;
+}
+
+.timer-bar.warning {
+    background: linear-gradient(90deg, #e74c3c, #ff6b6b);
+    animation: timerPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.timer-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: #4a3728;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+/* ===== Canvas do Jogo ===== */
+#game-canvas {
+    display: block;
+    border-radius: 6px;
+    border: 3px solid #6B4E3D;
+    touch-action: none;
+    max-width: 100%;
+    height: auto;
+}
+
+/* ===== Mensagem de Estado ===== */
+.game-status {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 6px;
+    color: #6B4E3D;
+    transition: color 0.3s ease;
+}
+
+.game-status.win {
+    color: #27ae60;
+    animation: statusPop 0.4s ease;
+}
+
+.game-status.lose {
+    color: #e74c3c;
+    animation: statusPop 0.4s ease;
+}
+
+@keyframes statusPop {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== Controlos Direcionais (D-Pad) ===== */
+.game-controls {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.controls-row {
+    display: flex;
+    gap: 4px;
+}
+
+.ctrl-btn {
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #7a5c49, #6B4E3D);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow:
+        0 4px 8px rgba(107, 78, 61, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ctrl-btn:active {
+    transform: scale(0.9);
+    box-shadow:
+        0 2px 4px rgba(107, 78, 61, 0.3),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(145deg, #6B4E3D, #5a3f30);
+}
+
+/* ===== Botão Novo Jogo ===== */
+.btn-new-game {
+    margin-top: 12px;
+    padding: 9px 20px;
+    background: linear-gradient(135deg, #D4A373, #c4935f);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 3px 10px rgba(212, 163, 115, 0.4);
+    font-family: inherit;
+    touch-action: manipulation;
+}
+
+.btn-new-game:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 16px rgba(212, 163, 115, 0.5);
+}
+
+.btn-new-game:active {
+    transform: translateY(0);
+}
+
+/* ===== Dica de Uso ===== */
+.game-hint {
+    font-size: 10px;
+    color: #b8a090;
+    margin-top: 10px;
+}
+
+
+/* ====================================================
+   RESPONSIVIDADE
+   ==================================================== */
+
+/* Tablet e ecrãs médios */
+@media (max-width: 900px) {
+    .page-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .game-sidebar {
+        position: static;
+        width: 100%;
+        max-width: 380px;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+}
+
+/* Mobile */
+@media (max-width: 500px) {
+    body {
+        padding: 12px;
+    }
+
+    .page-layout {
+        gap: 16px;
+    }
+
+    .game-sidebar {
+        max-width: 100%;
+    }
+
+    .container {
+        padding: 16px;
+    }
+
+    .ctrl-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 15px;
+    }
+
+    .game-title {
+        font-size: 18px;
+    }
+
     .fliperama-banner {
         flex-direction: column;
         text-align: center;
