@@ -38,10 +38,15 @@ A interface web do **Clube da Trufa** foi desenvolvida como uma *Single Page App
 
 ```
 turfas-web/
-├── index.html      # Estrutura semântica da página (HTML5)
-├── style.css       # Design system e estilos visuais
-├── script.js       # Lógica de negócio e renderização dinâmica
-└── README.md       # Documentação do projeto
+├── index.html              # Página principal (ranking + jogo integrado)
+├── style.css               # Design system unificado (ranking + jogo)
+├── script.js               # Lógica do ranking e consumo da API
+├── README.md               # Documentação do projeto
+└── jogo-trufa/             # Mini jogo do labirinto
+    ├── index.html          # Versão standalone do jogo (para testes)
+    ├── style.css           # Estilos standalone do jogo
+    ├── script.js           # Lógica do jogo (geração, renderização, controlos)
+    └── README.md           # Documentação técnica do jogo
 ```
 
 ### Funcionalidades Implementadas
@@ -78,6 +83,28 @@ Um banner compacto posicionado no topo da página (entre o cabeçalho e as abas 
 * **Botão "Jogar":** Abre o fliperama em nova aba (`target="_blank"`), com gradiente dourado e animação de pulse para chamar a atenção.
 * **Link:** [React Fliperama](https://barroca07.github.io/React_Fliperama/)
 
+#### 🍫 Jogo da Trufa — Labirinto Integrado
+Um mini jogo de labirinto 2D embutido diretamente na página principal como **sidebar lateral**, oferecendo entretenimento imediato sem sair da página de ranking.
+
+* **Mecânica:** O jogador navega por um labirinto gerado aleatoriamente (algoritmo DFS Recursive Backtracker) para encontrar a trufa escondida no canto inferior direito antes que o tempo se esgote.
+* **Dificuldade:** Grade 20×20 células, 45 segundos de tempo limite e apenas ~12% de paredes removidas (poucas bifurcações, exigindo raciocínio).
+* **Controlos:** Setas do teclado, teclas WASD ou botões D-Pad na tela (otimizado para touch/mobile).
+* **Efeitos visuais:** Trufa e jogador com brilho pulsante animado via `requestAnimationFrame`, halo dourado na saída e indicador direcional no jogador.
+* **Renderização:** HTML5 Canvas com paleta temática de chocolates (paredes castanho escuro, caminhos creme, jogador laranja, trufa castanho chocolate).
+* **Integração:** O HTML do jogo é embutido como `<aside class="game-sidebar">` e o script `jogo-trufa/script.js` é carregado na página principal.
+
+#### 📐 Layout de Duas Colunas
+A página principal foi reestruturada com um layout flex de duas colunas para acomodar o jogo e o ranking lado a lado:
+
+| Ecrã | Disposição |
+|------|------------|
+| **Desktop** (≥ 900px) | 🎮 Jogo na sidebar esquerda (sticky) + 🏆 Ranking à direita |
+| **Mobile** (< 900px) | 🎮 Jogo no topo + 🏆 Ranking abaixo (empilhado) |
+
+* **Sidebar sticky:** O jogo permanece visível ao rolar a lista de ranking (`position: sticky; top: 20px`).
+* **Largura da sidebar:** 380px no desktop, 100% no mobile.
+* **Container máximo:** `max-width: 1100px` para o layout completo.
+
 #### Consumo da API (Fetch Assíncrono)
 O `script.js` faz uma requisição `GET` assíncrona ao endpoint do Google Apps Script no carregamento da página:
 * **Loading state:** Exibe a mensagem "A atualizar pontuações..." enquanto aguarda a resposta da API.
@@ -100,7 +127,8 @@ O projeto segue um design system coeso baseado numa paleta temática de chocolat
 * **Cards de cliente:** Fundo `#fdfdfd` com borda `#eee`, `border-radius: 10px` e efeito hover com elevação (`translateY(-2px)` + sombra).
 * **Banner do Fliperama:** Gradiente de três pontos (`#6B4E3D → #8B6F5E → #D4A373`) com efeito shimmer decorativo e ícone com animação bounce.
 * **Botão do Fliperama:** Gradiente dourado (`#FFD700 → #FFA500`) com animação `pulse-glow` contínua e hover com escala + elevação.
-* **Responsividade:** Media query para ecrãs estreitos (`max-width: 400px`) que empilha os elementos do banner verticalmente.
+* **Jogo da Trufa:** Brilho pulsante animado no jogador (halo laranja) e na trufa (halo dourado + luz especular), canvas com borda `#6B4E3D` e botões D-Pad com gradiente castanho.
+* **Responsividade:** Layout de 2 colunas no desktop (≥ 900px) empilha verticalmente no mobile. Media queries adicionais para ecrãs ≤ 500px.
 
 ---
 
@@ -112,6 +140,7 @@ O projeto segue um design system coeso baseado numa paleta temática de chocolat
 | **Low-Code** | AppSheet | Interface operacional de vendas |
 | **Back-end/API** | Google Apps Script (JavaScript) | API REST read-only, regras de negócio |
 | **Front-end** | HTML5, CSS3, JavaScript (Vanilla) | Interface gamificada para clientes |
+| **Canvas 2D** | HTML5 Canvas + requestAnimationFrame | Renderização do jogo do labirinto |
 | **Deploy** | GitHub Pages | Hospedagem estática do front-end |
 
 ---
@@ -131,16 +160,21 @@ O projeto segue um design system coeso baseado numa paleta temática de chocolat
 ## 📁 Diagrama de Fluxo
 
 ```
-┌─────────────┐     ┌─────────────────┐     ┌───────────────────┐     ┌──────────────────┐
-│ Google       │────▶│ Google Apps      │────▶│ GitHub Pages      │────▶│ Cliente          │
-│ Sheets (DB)  │     │ Script (API)    │     │ (Front-end)       │     │ (Navegador)      │
-└─────────────┘     └─────────────────┘     └───────────────────┘     └──────────────────┘
-       ▲                                            │
-       │                                            ▼
-┌─────────────┐                             ┌──────────────────┐
-│ AppSheet     │                             │ React Fliperama  │
-│ (Operação)   │                             │ (Entretenimento) │
-└─────────────┘                             └──────────────────┘
+┌─────────────┐     ┌─────────────────┐     ┌───────────────────────────────┐     ┌──────────────┐
+│ Google       │────▶│ Google Apps      │────▶│ GitHub Pages (Front-end)      │────▶│ Cliente      │
+│ Sheets (DB)  │     │ Script (API)    │     │                               │     │ (Navegador)  │
+└─────────────┘     └─────────────────┘     │  ┌────────────┬────────────┐  │     └──────────────┘
+       ▲                                    │  │ Sidebar    │ Ranking    │  │
+       │                                    │  │ Jogo Trufa │ + Fliper.  │  │
+┌─────────────┐                             │  │ (Canvas)   │ (API Data) │  │
+│ AppSheet     │                             │  └────────────┴────────────┘  │
+│ (Operação)   │                             └───────────────────────────────┘
+└─────────────┘                                        │
+                                                       ▼
+                                                ┌──────────────────┐
+                                                │ React Fliperama  │
+                                                │ (Link Externo)   │
+                                                └──────────────────┘
 ```
 
 ---
