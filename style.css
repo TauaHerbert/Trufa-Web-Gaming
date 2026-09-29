@@ -68,6 +68,104 @@ h1 {
     border-bottom: 2px solid #eee;
 }
 
+/* ===== Top 5 Sabores ===== */
+.sabores-section {
+    margin-bottom: 22px;
+    padding: 18px;
+    background: linear-gradient(135deg, #fdf6ee 0%, #f9ece0 100%);
+    border-radius: 14px;
+    border: 1px solid rgba(212, 163, 115, 0.25);
+}
+
+.sabores-titulo {
+    font-size: 18px;
+    color: var(--primary);
+    text-align: center;
+    margin-bottom: 2px;
+}
+
+.sabores-subtitulo {
+    font-size: 11px;
+    color: #999;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.top-sabores-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sabor-item {
+    animation: sabor-slide-in 0.4s ease forwards;
+    opacity: 0;
+}
+
+.sabor-item:nth-child(1) { animation-delay: 0.05s; }
+.sabor-item:nth-child(2) { animation-delay: 0.1s; }
+.sabor-item:nth-child(3) { animation-delay: 0.15s; }
+.sabor-item:nth-child(4) { animation-delay: 0.2s; }
+.sabor-item:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes sabor-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.sabor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.sabor-medalha {
+    font-size: 16px;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.sabor-nome {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.sabor-total {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 30px;
+    text-align: right;
+}
+
+.sabor-bar-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-left: 36px;
+    width: calc(100% - 36px);
+}
+
+.sabor-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}
+
 .tab-btn {
     flex: 1;
     background: none;

@@ -1,16 +1,22 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyqO36T5Jy_tgDychKYEzYXwl65maWWscYYsqndP-PfkQvr2qqocQC7di8PnImoJEyh/exec';
 
 let dadosGlobais = [];
+let saboresGlobais = {};
 
 async function carregarRanking() {
     try {
         const resposta = await fetch(API_URL);
-        dadosGlobais = await resposta.json();
+        const dados = await resposta.json();
+
+        // A API agora retorna { ranking: [...], sabores: {...} }
+        dadosGlobais = dados.ranking || [];
+        saboresGlobais = dados.sabores || {};
 
         document.getElementById('status').style.display = 'none';
 
         renderizarLista('totalMes', 'lista-mes');
         renderizarLista('totalGeral', 'lista-geral');
+        renderizarTopSabores();
 
     } catch (erro) {
         document.getElementById('status').innerText = "Erro ao carregar o ranking. Tente novamente mais tarde.";
@@ -75,6 +81,65 @@ function renderizarLista(criterio, elementId) {
 
         container.innerHTML += card;
     });
+}
+
+/**
+ * Renderiza o Top 5 sabores mais vendidos.
+ */
+function renderizarTopSabores() {
+    const container = document.getElementById('top-sabores');
+    if (!container) return;
+
+    // Converter o objeto de sabores num array e ordenar do maior para o menor
+    const listaSabores = Object.entries(saboresGlobais)
+        .map(([nome, total]) => ({ nome, total }))
+        .sort((a, b) => b.total - a.total);
+
+    // Pegar apenas o Top 5
+    const top5 = listaSabores.slice(0, 5);
+
+    if (top5.length === 0) {
+        container.innerHTML = "<p style='text-align:center; color:#999;'>Sem dados de sabores.</p>";
+        return;
+    }
+
+    // O maior valor serve de referência (100%) para as barras proporcionais
+    const maxTotal = top5[0].total;
+
+    // Emojis temáticos para cada posição do pódio
+    const medalhas = ['🥇', '🥈', '🥉', '4º', '5º'];
+
+    // Cores do gradiente para cada posição
+    const cores = [
+        'linear-gradient(90deg, #FFD700, #FFA500)',  // Ouro
+        'linear-gradient(90deg, #C0C0C0, #A8A8A8)',  // Prata
+        'linear-gradient(90deg, #CD7F32, #B8652A)',   // Bronze
+        'linear-gradient(90deg, #D4A373, #C4935F)',   // 4º
+        'linear-gradient(90deg, #D4A373, #C4935F)',   // 5º
+    ];
+
+    let html = '';
+
+    top5.forEach((sabor, index) => {
+        const percentual = (sabor.total / maxTotal) * 100;
+        const medalha = medalhas[index];
+        const cor = cores[index];
+
+        html += `
+            <div class="sabor-item" id="sabor-${index + 1}">
+                <div class="sabor-header">
+                    <span class="sabor-medalha">${medalha}</span>
+                    <span class="sabor-nome">${sabor.nome}</span>
+                    <span class="sabor-total">${sabor.total}</span>
+                </div>
+                <div class="sabor-bar-container">
+                    <div class="sabor-bar-fill" style="width: ${percentual}%; background: ${cor};"></div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 // Função para alternar entre as abas visuais
