@@ -604,14 +604,41 @@ h1 {
         align-items: center;
     }
 
-    .game-sidebar {
-        position: static;
+    /* Ranking aparece primeiro, jogo vai para baixo */
+    .main-content {
+        order: 1;
         width: 100%;
-        max-width: 380px;
     }
 
-    .main-content {
+    .game-sidebar {
+        order: 2;
+        position: static;
         width: 100%;
+        max-width: 420px;
+    }
+
+    /* Botões D-Pad maiores para touch */
+    .ctrl-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 20px;
+        border-radius: 14px;
+    }
+
+    .controls-row {
+        gap: 6px;
+    }
+
+    .game-controls {
+        gap: 6px;
+        margin-top: 14px;
+    }
+
+    /* Botão Novo Labirinto afastado do D-Pad */
+    .btn-new-game {
+        margin-top: 24px;
+        padding: 12px 28px;
+        font-size: 14px;
     }
 }
 
@@ -633,14 +660,36 @@ h1 {
         padding: 16px;
     }
 
+    /* Botões D-Pad ainda maiores no mobile estreito */
     .ctrl-btn {
-        width: 44px;
-        height: 44px;
-        font-size: 15px;
+        width: 62px;
+        height: 62px;
+        font-size: 22px;
+        border-radius: 16px;
+    }
+
+    .controls-row {
+        gap: 8px;
+    }
+
+    .game-controls {
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    /* Botão Novo Labirinto bem afastado */
+    .btn-new-game {
+        margin-top: 30px;
+        padding: 14px 32px;
+        font-size: 14px;
     }
 
     .game-title {
         font-size: 18px;
+    }
+
+    .game-hint {
+        margin-top: 14px;
     }
 
     .fliperama-banner {
