@@ -21,35 +21,71 @@
 
                 <div class="game-container" id="game-container">
 
-                    <!-- Barra de Tempo -->
-                    <div class="timer-bar-container" id="timer-container">
-                        <div class="timer-bar" id="timer-bar"></div>
-                        <span class="timer-text" id="timer-text">⏱ 45s</span>
+                    <!-- ===== Tela de Login (PIN) ===== -->
+                    <div class="maze-login" id="maze-login">
+                        <div class="maze-login-icon">🔐</div>
+                        <h3 class="maze-login-title">Acesse sua tentativa</h3>
+                        <p class="maze-login-desc">Selecione seu nome e insira o PIN para jogar a tentativa do dia.</p>
+
+                        <div class="maze-login-field">
+                            <label for="maze-cliente-select">👤 Cliente</label>
+                            <select id="maze-cliente-select">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+
+                        <div class="maze-login-field">
+                            <label for="maze-pin-input">🔑 PIN</label>
+                            <input type="password" id="maze-pin-input" placeholder="Digite seu PIN" maxlength="6" inputmode="numeric">
+                        </div>
+
+                        <button class="maze-login-btn" id="maze-login-btn">🎮 Validar e Jogar</button>
+                        <div class="maze-login-error" id="maze-login-error"></div>
                     </div>
 
-                    <!-- Canvas do Jogo -->
-                    <canvas id="game-canvas"></canvas>
+                    <!-- ===== Área do Jogo (escondida até login) ===== -->
+                    <div class="maze-game-area" id="maze-game-area" style="display: none;">
+                        <div class="maze-player-badge" id="maze-player-badge"></div>
 
-                    <!-- Mensagem de Estado -->
-                    <div class="game-status" id="game-status"></div>
+                        <!-- Barra de Tempo -->
+                        <div class="timer-bar-container" id="timer-container">
+                            <div class="timer-bar" id="timer-bar"></div>
+                            <span class="timer-text" id="timer-text">⏱ 45s</span>
+                        </div>
 
-                    <!-- Controlos Direcionais (D-Pad) -->
-                    <div class="game-controls" id="game-controls">
-                        <div class="controls-row">
-                            <button class="ctrl-btn" id="btn-up" aria-label="Mover para cima">▲</button>
+                        <!-- Canvas do Jogo -->
+                        <canvas id="game-canvas"></canvas>
+
+                        <!-- Mensagem de Estado -->
+                        <div class="game-status" id="game-status"></div>
+
+                        <!-- Controlos Direcionais (D-Pad) -->
+                        <div class="game-controls" id="game-controls">
+                            <div class="controls-row">
+                                <button class="ctrl-btn" id="btn-up" aria-label="Mover para cima">▲</button>
+                            </div>
+                            <div class="controls-row">
+                                <button class="ctrl-btn" id="btn-left" aria-label="Mover para esquerda">◄</button>
+                                <button class="ctrl-btn ctrl-btn-center" id="btn-down" aria-label="Mover para baixo">▼</button>
+                                <button class="ctrl-btn" id="btn-right" aria-label="Mover para direita">►</button>
+                            </div>
                         </div>
-                        <div class="controls-row">
-                            <button class="ctrl-btn" id="btn-left" aria-label="Mover para esquerda">◄</button>
-                            <button class="ctrl-btn ctrl-btn-center" id="btn-down" aria-label="Mover para baixo">▼</button>
-                            <button class="ctrl-btn" id="btn-right" aria-label="Mover para direita">►</button>
-                        </div>
+
+                        <!-- Botão Novo Jogo (agora desabilitado pois é 1 tentativa por dia) -->
+                        <button class="btn-new-game" id="btn-new-game" style="display: none;">🔄 Novo Labirinto</button>
                     </div>
-
-                    <!-- Botão Novo Jogo -->
-                    <button class="btn-new-game" id="btn-new-game">🔄 Novo Labirinto</button>
                 </div>
 
                 <p class="game-hint" id="game-hint">💡 Use as setas do teclado ou os botões para se mover</p>
+            </div>
+
+            <!-- ===== Ranking do Labirinto ===== -->
+            <div class="maze-ranking-section" id="maze-ranking-section">
+                <h3 class="maze-ranking-title">🏆 Ranking do Labirinto</h3>
+                <p class="maze-ranking-subtitle">Os mais rápidos a encontrar a trufa</p>
+                <div class="maze-ranking-list" id="maze-ranking-list">
+                    <div class="maze-ranking-loading">Carregando ranking...</div>
+                </div>
             </div>
         </aside>
 

@@ -2,15 +2,22 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyqO36T5Jy_tgDychKYEzYX
 
 let dadosGlobais = [];
 let saboresGlobais = {};
+let listaClientesGlobal = [];
+let rankingLabirintoGlobal = [];
+
+// ===== Jogador autenticado =====
+let jogadorAutenticado = null; // { id, nome }
 
 async function carregarRanking() {
     try {
         const resposta = await fetch(API_URL);
         const dados = await resposta.json();
 
-        // A API agora retorna { ranking: [...], sabores: {...} }
+        // A API retorna { ranking: [...], sabores: {...}, listaClientes: [...], rankingLabirinto: [...] }
         dadosGlobais = dados.ranking || [];
         saboresGlobais = dados.sabores || {};
+        listaClientesGlobal = dados.listaClientes || dados.clientes || [];
+        rankingLabirintoGlobal = dados.rankingLabirinto || [];
 
         document.getElementById('status').style.display = 'none';
 
@@ -18,10 +25,276 @@ async function carregarRanking() {
         renderizarLista('totalGeral', 'lista-geral');
         renderizarTopSabores();
 
+        // Popular o combobox de clientes no login do labirinto
+        popularComboboxClientes();
+
+        // Renderizar ranking do labirinto
+        renderizarRankingLabirinto();
+
     } catch (erro) {
         document.getElementById('status').innerText = "Erro ao carregar o ranking. Tente novamente mais tarde.";
     }
 }
+
+/**
+ * Popula o select de clientes na tela de login do labirinto.
+ */
+function popularComboboxClientes() {
+    const select = document.getElementById('maze-cliente-select');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione seu nome...</option>';
+
+    // Ordenar clientes por nome
+    const clientesOrdenados = [...listaClientesGlobal].sort((a, b) =>
+        a.nome.localeCompare(b.nome, 'pt-BR')
+    );
+
+    clientesOrdenados.forEach(function (cliente) {
+        const option = document.createElement('option');
+        option.value = cliente.id;
+        option.textContent = cliente.nome;
+        select.appendChild(option);
+    });
+}
+
+/**
+ * Renderiza o ranking do labirinto (Top 10 melhores tempos).
+ */
+function renderizarRankingLabirinto() {
+    const container = document.getElementById('maze-ranking-list');
+    if (!container) return;
+
+    if (!rankingLabirintoGlobal || rankingLabirintoGlobal.length === 0) {
+        container.innerHTML = '<div class="maze-ranking-empty">Nenhuma jogada registrada ainda. Seja o primeiro! 🎮</div>';
+        return;
+    }
+
+    // Criar mapa de nomes dos clientes
+    const mapaClientes = {};
+    listaClientesGlobal.forEach(function (c) {
+        mapaClientes[String(c.id)] = c.nome;
+    });
+
+    // Ordenar por menor tempo (mais rápido primeiro)
+    const ranking = [...rankingLabirintoGlobal].sort((a, b) => {
+        const tempoA = parseFloat(a.Tempo) || 9999;
+        const tempoB = parseFloat(b.Tempo) || 9999;
+        return tempoA - tempoB;
+    });
+
+    // Top 10
+    const top10 = ranking.slice(0, 10);
+
+    let html = '';
+
+    top10.forEach(function (item, index) {
+        const posicao = index + 1;
+        const nomeCliente = mapaClientes[String(item.ID_Cliente)] || 'Desconhecido';
+        const tempo = parseFloat(item.Tempo) || 0;
+
+        // Data formatada
+        let dataFormatada = '';
+        if (item.Data) {
+            try {
+                const dataObj = new Date(item.Data);
+                dataFormatada = dataObj.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            } catch (e) {
+                dataFormatada = '';
+            }
+        }
+
+        // Classes especiais para top 3
+        let cardClass = 'maze-rank-card';
+        let posClass = 'maze-rank-pos pos-other';
+
+        if (posicao === 1) {
+            cardClass += ' rank-1';
+            posClass = 'maze-rank-pos pos-1';
+        } else if (posicao === 2) {
+            cardClass += ' rank-2';
+            posClass = 'maze-rank-pos pos-2';
+        } else if (posicao === 3) {
+            cardClass += ' rank-3';
+            posClass = 'maze-rank-pos pos-3';
+        }
+
+        html += `
+            <div class="${cardClass}" id="maze-rank-${posicao}">
+                <div class="${posClass}">${posicao}º</div>
+                <div class="maze-rank-info">
+                    <div class="maze-rank-name">${nomeCliente}</div>
+                    <div class="maze-rank-date">${dataFormatada}</div>
+                </div>
+                <div class="maze-rank-time">
+                    ${tempo}<small>s</small>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+
+/* ================================================
+   LÓGICA DE LOGIN DO LABIRINTO (PIN)
+   ================================================ */
+
+/**
+ * Valida o PIN do cliente via POST e libera o jogo.
+ */
+async function validarPinEJogar() {
+    const select = document.getElementById('maze-cliente-select');
+    const pinInput = document.getElementById('maze-pin-input');
+    const errorEl = document.getElementById('maze-login-error');
+    const loginBtn = document.getElementById('maze-login-btn');
+
+    const idCliente = select.value;
+    const pin = pinInput.value.trim();
+
+    // Validações locais
+    if (!idCliente) {
+        errorEl.textContent = '⚠️ Selecione o seu nome.';
+        errorEl.className = 'maze-login-error';
+        return;
+    }
+
+    if (!pin) {
+        errorEl.textContent = '⚠️ Digite o seu PIN.';
+        errorEl.className = 'maze-login-error';
+        return;
+    }
+
+    // Desabilitar botão
+    loginBtn.disabled = true;
+    loginBtn.textContent = '⏳ Validando...';
+    errorEl.textContent = '';
+
+    try {
+        const resposta = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                acao: 'validar_acesso',
+                idCliente: idCliente,
+                pin: pin
+            }),
+            redirect: 'follow'
+        });
+
+        const textoResposta = await resposta.text();
+        let resultado;
+
+        try {
+            resultado = JSON.parse(textoResposta);
+        } catch (parseErr) {
+            errorEl.textContent = '❌ Erro na resposta do servidor.';
+            errorEl.className = 'maze-login-error';
+            loginBtn.disabled = false;
+            loginBtn.textContent = '🎮 Validar e Jogar';
+            return;
+        }
+
+        // Verificar se a resposta é do doPost (tem 'sucesso') ou do doGet (redirecionou)
+        if (typeof resultado.sucesso === 'undefined') {
+            // O servidor retornou a resposta do doGet em vez do doPost
+            errorEl.textContent = '❌ Erro de comunicação com o servidor. Tente novamente.';
+            errorEl.className = 'maze-login-error';
+            loginBtn.disabled = false;
+            loginBtn.textContent = '🎮 Validar e Jogar';
+            return;
+        }
+
+        if (resultado.sucesso) {
+            // Login bem sucedido
+            const nomeCliente = select.options[select.selectedIndex].text;
+            jogadorAutenticado = { id: idCliente, nome: nomeCliente };
+
+            errorEl.textContent = '✅ ' + resultado.mensagem;
+            errorEl.className = 'maze-login-error success';
+
+            // Aguardar meio segundo para mostrar mensagem de sucesso
+            setTimeout(function () {
+                mostrarJogo();
+            }, 600);
+        } else {
+            errorEl.textContent = '❌ ' + (resultado.erro || resultado.mensagem || 'Erro desconhecido.');
+            errorEl.className = 'maze-login-error';
+            loginBtn.disabled = false;
+            loginBtn.textContent = '🎮 Validar e Jogar';
+        }
+    } catch (erro) {
+        errorEl.textContent = '❌ Erro de conexão. Tente novamente.';
+        errorEl.className = 'maze-login-error';
+        loginBtn.disabled = false;
+        loginBtn.textContent = '🎮 Validar e Jogar';
+    }
+}
+
+/**
+ * Mostra a área do jogo e esconde o login.
+ */
+function mostrarJogo() {
+    const loginEl = document.getElementById('maze-login');
+    const gameArea = document.getElementById('maze-game-area');
+    const badge = document.getElementById('maze-player-badge');
+
+    loginEl.style.display = 'none';
+    gameArea.style.display = 'flex';
+
+    // Mostrar badge com nome do jogador
+    if (jogadorAutenticado) {
+        badge.textContent = '👤 ' + jogadorAutenticado.nome;
+    }
+
+    // Iniciar o jogo
+    if (typeof novoJogo === 'function') {
+        novoJogo();
+    }
+}
+
+/**
+ * Salva o resultado do labirinto via POST.
+ */
+async function salvarResultadoLabirinto(tempoGasto) {
+    if (!jogadorAutenticado) return;
+
+    try {
+        const resposta = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                acao: 'salvar_tempo',
+                idCliente: jogadorAutenticado.id,
+                tempo: tempoGasto
+            }),
+            redirect: 'follow'
+        });
+
+        const resultado = await resposta.json();
+
+        if (resultado.sucesso) {
+            // Atualizar ranking local com o novo resultado
+            rankingLabirintoGlobal.push({
+                ID_Cliente: jogadorAutenticado.id,
+                Data: new Date().toISOString(),
+                Tempo: tempoGasto
+            });
+            renderizarRankingLabirinto();
+        }
+    } catch (erro) {
+        // Silenciosamente falhar, o resultado já foi exibido no jogo
+        console.error('Erro ao salvar resultado:', erro);
+    }
+}
+
+
+/* ================================================
+   RANKING DE TRUFAS (código existente)
+   ================================================ */
 
 function renderizarLista(criterio, elementId) {
     const container = document.getElementById(elementId);
@@ -157,6 +430,23 @@ function mudarAba(abaId) {
         document.getElementById('lista-geral').classList.add('active');
     }
 }
+
+
+/* ================================================
+   EVENT LISTENERS DO LOGIN
+   ================================================ */
+
+// Botão de login
+document.getElementById('maze-login-btn').addEventListener('click', validarPinEJogar);
+
+// Enter no campo de PIN
+document.getElementById('maze-pin-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        validarPinEJogar();
+    }
+});
+
 
 // Inicia a aplicação
 carregarRanking();

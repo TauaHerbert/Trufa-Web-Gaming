@@ -594,6 +594,344 @@ h1 {
 
 
 /* ====================================================
+   TELA DE LOGIN DO LABIRINTO (PIN)
+   ==================================================== */
+
+.maze-login {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 20px;
+    width: 100%;
+    max-width: 320px;
+    animation: mazeLoginFadeIn 0.5s ease;
+}
+
+@keyframes mazeLoginFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.maze-login-icon {
+    font-size: 42px;
+    margin-bottom: 8px;
+    animation: lockPulse 2s ease-in-out infinite;
+}
+
+@keyframes lockPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1) rotate(5deg); }
+}
+
+.maze-login-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0 0 4px 0;
+}
+
+.maze-login-desc {
+    font-size: 11px;
+    color: #999;
+    text-align: center;
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+}
+
+.maze-login-field {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.maze-login-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.maze-login-field select,
+.maze-login-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid rgba(212, 163, 115, 0.3);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fdf8f3;
+    color: var(--text);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.maze-login-field select:focus,
+.maze-login-field input:focus {
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(212, 163, 115, 0.15);
+    background: #fff;
+}
+
+.maze-login-field select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B4E3D' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.maze-login-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6B4E3D, #8B6F5E);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 14px rgba(107, 78, 61, 0.3);
+    font-family: inherit;
+    margin-top: 4px;
+}
+
+.maze-login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(107, 78, 61, 0.4);
+    background: linear-gradient(135deg, #7a5c49, #9a7e6d);
+}
+
+.maze-login-btn:active {
+    transform: translateY(0);
+}
+
+.maze-login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.maze-login-error {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #e74c3c;
+    font-weight: 600;
+    text-align: center;
+    min-height: 16px;
+    animation: shakeError 0.3s ease;
+}
+
+@keyframes shakeError {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.maze-login-error.success {
+    color: #27ae60;
+}
+
+/* ===== Badge do Jogador Logado ===== */
+.maze-player-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, rgba(107, 78, 61, 0.08), rgba(212, 163, 115, 0.12));
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+    border: 1px solid rgba(212, 163, 115, 0.2);
+}
+
+/* ===== Área do Jogo (wrapper interno) ===== */
+.maze-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    animation: mazeGameReveal 0.6s ease;
+}
+
+@keyframes mazeGameReveal {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+
+/* ====================================================
+   RANKING DO LABIRINTO
+   ==================================================== */
+
+.maze-ranking-section {
+    margin-top: 16px;
+    padding: 18px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(107, 78, 61, 0.12);
+    text-align: center;
+}
+
+.maze-ranking-title {
+    font-size: 17px;
+    color: var(--primary);
+    margin: 0 0 2px 0;
+    font-weight: 700;
+}
+
+.maze-ranking-subtitle {
+    font-size: 11px;
+    color: #999;
+    margin: 0 0 14px 0;
+}
+
+.maze-ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.maze-ranking-loading {
+    font-size: 12px;
+    color: #bbb;
+    font-style: italic;
+    padding: 16px;
+}
+
+.maze-ranking-empty {
+    font-size: 12px;
+    color: #bbb;
+    padding: 16px;
+}
+
+/* Card individual do ranking do labirinto */
+.maze-rank-card {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    animation: mazeRankSlide 0.4s ease forwards;
+    opacity: 0;
+}
+
+.maze-rank-card:nth-child(1) { animation-delay: 0.05s; }
+.maze-rank-card:nth-child(2) { animation-delay: 0.1s; }
+.maze-rank-card:nth-child(3) { animation-delay: 0.15s; }
+.maze-rank-card:nth-child(4) { animation-delay: 0.2s; }
+.maze-rank-card:nth-child(5) { animation-delay: 0.25s; }
+.maze-rank-card:nth-child(6) { animation-delay: 0.3s; }
+.maze-rank-card:nth-child(7) { animation-delay: 0.35s; }
+.maze-rank-card:nth-child(8) { animation-delay: 0.4s; }
+.maze-rank-card:nth-child(9) { animation-delay: 0.45s; }
+.maze-rank-card:nth-child(10) { animation-delay: 0.5s; }
+
+@keyframes mazeRankSlide {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.maze-rank-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Card especial para top 3 */
+.maze-rank-card.rank-1 {
+    background: linear-gradient(135deg, #fffdf0, #fff9e0);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+.maze-rank-card.rank-2 {
+    background: linear-gradient(135deg, #fafafa, #f5f5f5);
+    border-color: rgba(192, 192, 192, 0.3);
+}
+
+.maze-rank-card.rank-3 {
+    background: linear-gradient(135deg, #fdf6ee, #faf0e4);
+    border-color: rgba(205, 127, 50, 0.2);
+}
+
+.maze-rank-pos {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: white;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.maze-rank-pos.pos-1 {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.maze-rank-pos.pos-2 {
+    background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
+}
+
+.maze-rank-pos.pos-3 {
+    background: linear-gradient(135deg, #CD7F32, #B8652A);
+}
+
+.maze-rank-pos.pos-other {
+    background: #E0E0E0;
+    color: #555;
+}
+
+.maze-rank-info {
+    flex: 1;
+    text-align: left;
+    min-width: 0;
+}
+
+.maze-rank-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.maze-rank-date {
+    font-size: 10px;
+    color: #aaa;
+    margin-top: 1px;
+}
+
+.maze-rank-time {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.maze-rank-time small {
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+}
+
+
+/* ====================================================
    RESPONSIVIDADE
    ==================================================== */
 
@@ -700,5 +1038,17 @@ h1 {
 
     .fliperama-banner-left {
         flex-direction: column;
+    }
+
+    .maze-login {
+        padding: 18px 14px;
+    }
+
+    .maze-ranking-section {
+        padding: 14px;
+    }
+
+    .maze-rank-card {
+        padding: 8px 10px;
     }
 }

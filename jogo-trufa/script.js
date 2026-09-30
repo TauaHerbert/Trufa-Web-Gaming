@@ -521,6 +521,11 @@ function vencer() {
     statusEl.textContent = '🎉 Encontrou a trufa em ' + tempoGasto + 's!';
     statusEl.className = 'game-status win';
     desenhar();
+
+    // Salvar resultado no servidor (se jogador autenticado)
+    if (typeof salvarResultadoLabirinto === 'function') {
+        salvarResultadoLabirinto(tempoGasto);
+    }
 }
 
 /**
@@ -605,5 +610,10 @@ document.getElementById('btn-new-game').addEventListener('click', novoJogo);
 
 /* ================================================
    INICIALIZAÇÃO
+   O jogo NÃO inicia automaticamente.
+   Aguarda a validação do PIN em script.js
+   para chamar novoJogo() via mostrarJogo().
    ================================================ */
-novoJogo();
+// Preparar o labirinto inicial (sem timer) para exibir visualmente
+gerarLabirinto();
+desenhar();
