@@ -76,12 +76,24 @@ function renderizarRankingLabirinto() {
         mapaClientes[String(c.id)] = c.nome;
     });
 
-    // Ordenar por menor tempo (mais rápido primeiro)
-    const ranking = [...rankingLabirintoGlobal].sort((a, b) => {
-        const tempoA = parseFloat(a.Tempo) || 9999;
-        const tempoB = parseFloat(b.Tempo) || 9999;
-        return tempoA - tempoB;
+    // Agrupar por cliente e manter apenas o MELHOR TEMPO de cada um
+    const melhorPorCliente = {};
+
+    rankingLabirintoGlobal.forEach(function (item) {
+        const idCliente = String(item.ID_Cliente);
+        const tempo = parseFloat(item.Tempo) || 9999;
+
+        if (!melhorPorCliente[idCliente] || tempo < melhorPorCliente[idCliente].tempo) {
+            melhorPorCliente[idCliente] = {
+                idCliente: idCliente,
+                tempo: tempo,
+                data: item.Data
+            };
+        }
     });
+
+    // Converter para array e ordenar por menor tempo (mais rápido primeiro)
+    const ranking = Object.values(melhorPorCliente).sort((a, b) => a.tempo - b.tempo);
 
     // Top 10
     const top10 = ranking.slice(0, 10);
@@ -90,14 +102,14 @@ function renderizarRankingLabirinto() {
 
     top10.forEach(function (item, index) {
         const posicao = index + 1;
-        const nomeCliente = mapaClientes[String(item.ID_Cliente)] || 'Desconhecido';
-        const tempo = parseFloat(item.Tempo) || 0;
+        const nomeCliente = mapaClientes[item.idCliente] || 'Desconhecido';
+        const tempo = item.tempo;
 
-        // Data formatada
+        // Data formatada (data do melhor resultado)
         let dataFormatada = '';
-        if (item.Data) {
+        if (item.data) {
             try {
-                const dataObj = new Date(item.Data);
+                const dataObj = new Date(item.data);
                 dataFormatada = dataObj.toLocaleDateString('pt-BR', {
                     day: '2-digit',
                     month: '2-digit',
