@@ -249,6 +249,7 @@ async function validarPinEJogar() {
 
 /**
  * Mostra a área do jogo e esconde o login.
+ * Exibe uma contagem regressiva antes de iniciar o jogo.
  */
 function mostrarJogo() {
     const loginEl = document.getElementById('maze-login');
@@ -263,10 +264,73 @@ function mostrarJogo() {
         badge.textContent = '👤 ' + jogadorAutenticado.nome;
     }
 
-    // Iniciar o jogo
-    if (typeof novoJogo === 'function') {
-        novoJogo();
-    }
+    // Exibir contagem regressiva antes de iniciar o jogo
+    iniciarContagemRegressiva();
+}
+
+/**
+ * Exibe um overlay de contagem regressiva (Prepare-se → 3 → 2 → 1 → VAI!)
+ * sobre a área do jogo e só inicia o jogo quando terminar.
+ */
+function iniciarContagemRegressiva() {
+    const gameArea = document.getElementById('maze-game-area');
+
+    // Criar o overlay da contagem regressiva
+    const overlay = document.createElement('div');
+    overlay.id = 'countdown-overlay';
+    overlay.className = 'countdown-overlay';
+
+    const texto = document.createElement('div');
+    texto.id = 'countdown-text';
+    texto.className = 'countdown-text';
+    texto.textContent = 'Prepare-se!';
+
+    const subtexto = document.createElement('div');
+    subtexto.className = 'countdown-subtitle';
+    subtexto.textContent = 'O labirinto vai começar...';
+
+    overlay.appendChild(texto);
+    overlay.appendChild(subtexto);
+    gameArea.appendChild(overlay);
+
+    // Forçar reflow para a animação inicial
+    overlay.offsetHeight;
+    overlay.classList.add('visible');
+
+    // Sequência: Prepare-se! (1.5s) → 3 (1s) → 2 (1s) → 1 (1s) → VAI! (0.5s)
+    const etapas = [
+        { texto: '3', subtexto: 'Concentre-se...', delay: 1500 },
+        { texto: '2', subtexto: '', delay: 2500 },
+        { texto: '1', subtexto: '', delay: 3500 },
+        { texto: 'VAI! 🚀', subtexto: '', delay: 4500 },
+    ];
+
+    etapas.forEach(function (etapa) {
+        setTimeout(function () {
+            texto.textContent = etapa.texto;
+            subtexto.textContent = etapa.subtexto;
+
+            // Adicionar efeito de pulso a cada número
+            texto.classList.remove('pulse');
+            texto.offsetHeight; // reflow
+            texto.classList.add('pulse');
+        }, etapa.delay);
+    });
+
+    // Após a contagem, remover overlay e iniciar o jogo
+    setTimeout(function () {
+        overlay.classList.remove('visible');
+        overlay.classList.add('fade-out');
+
+        setTimeout(function () {
+            overlay.remove();
+
+            // Agora sim, iniciar o jogo!
+            if (typeof novoJogo === 'function') {
+                novoJogo();
+            }
+        }, 400);
+    }, 5200);
 }
 
 /**

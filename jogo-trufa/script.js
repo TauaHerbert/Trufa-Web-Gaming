@@ -526,6 +526,9 @@ function vencer() {
     if (typeof salvarResultadoLabirinto === 'function') {
         salvarResultadoLabirinto(tempoGasto);
     }
+
+    // Esconder botão novo jogo e agendar reload
+    agendarReloadPagina();
 }
 
 /**
@@ -541,6 +544,9 @@ function perder() {
 
     // Redesenhar para mostrar o estado final
     desenhar();
+
+    // Agendar reload da página
+    agendarReloadPagina();
 }
 
 /**
@@ -606,6 +612,44 @@ adicionarControlo('btn-right', 1, 0);
 
 // --- Botão Novo Jogo ---
 document.getElementById('btn-new-game').addEventListener('click', novoJogo);
+
+
+/* ================================================
+   RELOAD AUTOMÁTICO APÓS FIM DE JOGO
+   Exibe contagem regressiva de 5s e recarrega a página.
+   ================================================ */
+
+/**
+ * Agenda o reload da página com contagem regressiva de 5 segundos.
+ * Mostra um aviso abaixo do status do jogo.
+ */
+function agendarReloadPagina() {
+    // Esconder botão novo jogo
+    const btnNovoJogo = document.getElementById('btn-new-game');
+    if (btnNovoJogo) btnNovoJogo.style.display = 'none';
+
+    // Criar elemento de contagem regressiva para reload
+    const reloadInfo = document.createElement('div');
+    reloadInfo.id = 'reload-countdown';
+    reloadInfo.className = 'reload-countdown';
+    reloadInfo.textContent = '🔄 Voltando ao início em 5s...';
+
+    // Inserir após o status do jogo
+    statusEl.parentNode.insertBefore(reloadInfo, statusEl.nextSibling);
+
+    let segundosRestantes = 4;
+
+    const intervaloReload = setInterval(function () {
+        reloadInfo.textContent = '🔄 Voltando ao início em ' + segundosRestantes + 's...';
+        segundosRestantes--;
+
+        if (segundosRestantes < 0) {
+            clearInterval(intervaloReload);
+            reloadInfo.textContent = '🔄 Recarregando...';
+            window.location.reload();
+        }
+    }, 1000);
+}
 
 
 /* ================================================
