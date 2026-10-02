@@ -20,10 +20,13 @@ Aplicativo de uso interno para gestão do fluxo de caixa e registo rápido de pe
 * **UI/UX Condicional:** Uso de *Format Rules* para organização cronológica baseada em cores e layout em *Cards* para melhor usabilidade mobile.
 
 ### 3. API Intermediária (Google Apps Script)
-O coração da integração. Um script rodando no ecossistema do Google Planilhas que atua como uma API blindada (Endpoint público read-only) para conectar o banco de dados ao aplicativo Web.
+O coração da integração. Um script rodando no ecossistema do Google Planilhas que atua como uma API blindada para conectar o banco de dados ao aplicativo Web.
 * **Segurança e Sanitização:** Em vez de expor a planilha publicamente (o que comprometeria dados financeiros sensíveis), a API lê a base de dados no back-end e devolve apenas as informações estritamente necessárias.
 * **Regras de Negócio no Back-end:** O script cruza os IDs de vendas e itens, filtra exclusivamente as compras do polo varejista e calcula automaticamente o módulo promocional (Compre 10, Ganhe 1).
-* **Payload JSON:** O método `doGet(e)` serializa e devolve a resposta estruturada em JSON contendo apenas: `{ Nome, Total_Mensal, Total_Geral }`.
+* **Payload JSON (GET):** O método `doGet(e)` serializa e devolve a resposta estruturada em JSON contendo: `{ ranking, sabores, clientes, rankingLabirinto }`.
+* **Ações POST (`doPost`):** O método `doPost(e)` processa duas ações de escrita:
+  * **`validar_acesso`** — Valida o PIN do cliente, verifica se já jogou hoje e registra a partida imediatamente com tempo `9999` (pendente). Retorna o `idPartida` gerado.
+  * **`salvar_tempo`** — Recebe o `idPartida` e o tempo real da vitória, localiza a linha correspondente na planilha e atualiza o tempo de `9999` para o valor real.
 
 ### 4. Interface Web Gamificada (Front-end)
 Front-end hospedado no **GitHub Pages** (HTML, CSS, JS), consumindo a API gerada pelo Apps Script via requisições assíncronas (`fetch`). Atua como um painel de competição e entretenimento sem acesso direto ou edição à base de dados operacional.
@@ -70,11 +73,12 @@ Cada posição no ranking recebe um tratamento visual distinto:
 Os badges circulares são renderizados dinamicamente com classes CSS condicionais (`pos-1`, `pos-2`, `pos-3`, `pos-geral`).
 
 #### Barra de Progresso Promocional (Compre 10, Ganhe 1)
-Cada cartão de cliente inclui um indicador visual de progresso em direção à trufa grátis:
+Visível **apenas na aba Ranking do Mês**, cada cartão de cliente inclui um indicador visual de progresso em direção à trufa grátis. Na aba Histórico Geral, os cartões exibem apenas o nome e o total acumulado, sem a mensagem promocional.
 * **Cálculo modular:** `trufas % 10` — determina quantas trufas faltam no ciclo atual de 10.
 * **Barra de preenchimento:** Animada com `transition: width 0.5s ease`, preenchendo proporcionalmente (0% a 100%).
 * **Feedback textual:** Mensagem dinâmica que informa quantas trufas faltam, ou exibe `🎉 Parabéns! Ganhou uma trufa grátis!` quando o ciclo se completa.
 * **Tratamento de edge case:** Quando o total é múltiplo exato de 10 (e maior que zero), a barra mostra 10/10 (cheia) em vez de 0/10.
+* **Renderização condicional:** O bloco `promo-container` é inserido no HTML apenas quando `criterio === 'totalMes'`.
 
 #### 🕹️ Integração com Mini Fliperama
 Um banner compacto posicionado no topo da página (entre o cabeçalho e as abas de ranking) convida o cliente a jogar um mini fliperama externo enquanto saboreia a sua trufa:
@@ -92,6 +96,12 @@ Um mini jogo de labirinto 2D embutido diretamente na página principal como **si
 * **Efeitos visuais:** Trufa e jogador com brilho pulsante animado via `requestAnimationFrame`, halo dourado na saída e indicador direcional no jogador.
 * **Renderização:** HTML5 Canvas com paleta temática de chocolates (paredes castanho escuro, caminhos creme, jogador laranja, trufa castanho chocolate).
 * **Integração:** O HTML do jogo é embutido como `<aside class="game-sidebar">` e o script `jogo-trufa/script.js` é carregado na página principal.
+* **Autenticação:** O jogador seleciona o seu nome num combobox e insere um PIN numérico. O backend valida as credenciais via `doPost` com a ação `validar_acesso`.
+* **Registro antecipado de partida:** Ao validar o acesso, o backend grava imediatamente uma linha na aba `Resultados_Labirinto` com tempo `9999` (pendente) e devolve um `idPartida` único. Isso garante que a tentativa é consumida **antes** do jogo começar.
+* **Blindagem contra tentativas repetidas:** Se o jogador perder (tempo esgotado), recarregar a página (F5) ou fechar o navegador, o registro com `9999` já existe na planilha e impede nova tentativa no mesmo dia.
+* **Atualização em caso de vitória:** Quando o jogador encontra a trufa, o frontend envia o `idPartida` e o tempo real para o backend, que localiza a linha e atualiza o tempo de `9999` para o valor da vitória.
+* **Ranking do Labirinto:** Exibe os Top 10 melhores tempos (menores = mais rápidos), filtrando automaticamente registros com tempo `≥ 9999` (partidas não concluídas) para não exibi-los no ranking.
+* **Contagem regressiva:** Após validação, uma animação de contagem (Prepare-se → 3 → 2 → 1 → VAI!) é exibida antes do jogo iniciar.
 
 #### 📐 Layout de Duas Colunas
 A página principal foi reestruturada com um layout flex de duas colunas para acomodar o jogo e o ranking lado a lado:
