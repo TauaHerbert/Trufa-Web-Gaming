@@ -2,6 +2,8 @@
 
 Um ecossistema completo de gestão financeira e fidelização de clientes, construído com arquitetura *Serverless*. O projeto integra um banco de dados em nuvem, um aplicativo de uso operacional (para registo de vendas) e uma API REST customizada que alimenta uma interface web gamificada para os clientes finais.
 
+### 🌐 [Acesse o sistema ao vivo →](https://tauaherbert.github.io/Trufa-Web-Gaming/)
+
 ---
 
 ## Arquitetura do Sistema
