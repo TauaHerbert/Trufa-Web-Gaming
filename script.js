@@ -421,18 +421,22 @@ function renderizarLista(criterio, elementId) {
             textoPromo = "🎉 Parabéns! Ganhou uma trufa grátis!";
         }
 
+        // Bloco promocional só aparece no ranking mensal
+        const promoHtml = criterio === 'totalMes' ? `
+                    <div class="promo-container">
+                        <div class="promo-text">${textoPromo}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progresso}%"></div>
+                        </div>
+                    </div>` : '';
+
         // Cria o HTML do cartão do cliente
         const card = `
             <div class="cliente-card">
                 <div class="posicao ${classePosicao}">${posicao}º</div>
                 <div class="info">
                     <div class="nome">${cliente.nome}</div>
-                    <div class="promo-container">
-                        <div class="promo-text">${textoPromo}</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${progresso}%"></div>
-                        </div>
-                    </div>
+                    ${promoHtml}
                 </div>
                 <div class="pontos">${trufas}</div>
             </div>
