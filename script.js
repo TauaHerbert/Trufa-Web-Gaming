@@ -7,6 +7,7 @@ let rankingLabirintoGlobal = [];
 
 // ===== Jogador autenticado =====
 let jogadorAutenticado = null; // { id, nome }
+let partidaAtualId = null;     // ID da partida registrada no backend ao validar acesso
 
 async function carregarRanking() {
     try {
@@ -82,6 +83,10 @@ function renderizarRankingLabirinto() {
     rankingLabirintoGlobal.forEach(function (item) {
         const idCliente = String(item.ID_Cliente);
         const tempo = parseFloat(item.Tempo) || 9999;
+
+        // Ignorar registros com tempo 9999 (partidas não concluídas)
+        // para o cálculo do melhor tempo
+        if (tempo >= 9999) return;
 
         if (!melhorPorCliente[idCliente] || tempo < melhorPorCliente[idCliente].tempo) {
             melhorPorCliente[idCliente] = {
@@ -226,6 +231,10 @@ async function validarPinEJogar() {
             const nomeCliente = select.options[select.selectedIndex].text;
             jogadorAutenticado = { id: idCliente, nome: nomeCliente };
 
+            // Guardar o ID da partida registrada pelo backend
+            // O backend já gravou a linha com tempo 9999 (pendente)
+            partidaAtualId = resultado.idPartida || null;
+
             errorEl.textContent = '✅ ' + resultado.mensagem;
             errorEl.className = 'maze-login-error success';
 
@@ -345,6 +354,7 @@ async function salvarResultadoLabirinto(tempoGasto) {
             body: JSON.stringify({
                 acao: 'salvar_tempo',
                 idCliente: jogadorAutenticado.id,
+                idPartida: partidaAtualId,
                 tempo: tempoGasto
             }),
             redirect: 'follow'
