@@ -9,31 +9,84 @@ let rankingLabirintoGlobal = [];
 let jogadorAutenticado = null; // { id, nome }
 let partidaAtualId = null;     // ID da partida registrada no backend ao validar acesso
 
+// Cache local: mostra os últimos dados na hora enquanto a API responde
+const CHAVE_CACHE_LOCAL = 'clubeTrufa_dados_v1';
+const VALIDADE_CACHE_LOCAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function lerCacheLocal() {
+    try {
+        const texto = localStorage.getItem(CHAVE_CACHE_LOCAL);
+        if (!texto) return null;
+        const registro = JSON.parse(texto);
+        if (!registro || !registro.dados || (Date.now() - registro.salvoEm) > VALIDADE_CACHE_LOCAL_MS) {
+            return null;
+        }
+        return registro.dados;
+    } catch (e) {
+        return null;
+    }
+}
+
+function salvarCacheLocal(dados) {
+    try {
+        localStorage.setItem(CHAVE_CACHE_LOCAL, JSON.stringify({ salvoEm: Date.now(), dados: dados }));
+    } catch (e) { }
+}
+
+// Evita XSS ao inserir textos da planilha via innerHTML
+function escaparHTML(valor) {
+    return String(valor === undefined || valor === null ? '' : valor)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Renderiza a página com os dados recebidos (API ou cache local)
+function aplicarDados(dados) {
+    // A API retorna { ranking: [...], sabores: {...}, clientes: [...], rankingLabirinto: [...] }
+    dadosGlobais = dados.ranking || [];
+    saboresGlobais = dados.sabores || {};
+    listaClientesGlobal = dados.listaClientes || dados.clientes || [];
+    rankingLabirintoGlobal = dados.rankingLabirinto || [];
+
+    document.getElementById('status').style.display = 'none';
+
+    renderizarLista('totalMes', 'lista-mes');
+    renderizarLista('totalGeral', 'lista-geral');
+    renderizarTopSabores();
+
+    // Popular o combobox de clientes no login do labirinto
+    popularComboboxClientes();
+
+    // Renderizar ranking do labirinto
+    renderizarRankingLabirinto();
+}
+
 async function carregarRanking() {
+    // Mostra o cache local primeiro e depois atualiza com a API
+    const dadosLocais = lerCacheLocal();
+    if (dadosLocais) {
+        aplicarDados(dadosLocais);
+    }
+
     try {
         const resposta = await fetch(API_URL);
+        if (!resposta.ok) throw new Error('HTTP ' + resposta.status);
+
         const dados = await resposta.json();
+        if (!dados || !Array.isArray(dados.ranking)) throw new Error('Resposta inválida');
 
-        // A API retorna { ranking: [...], sabores: {...}, listaClientes: [...], rankingLabirinto: [...] }
-        dadosGlobais = dados.ranking || [];
-        saboresGlobais = dados.sabores || {};
-        listaClientesGlobal = dados.listaClientes || dados.clientes || [];
-        rankingLabirintoGlobal = dados.rankingLabirinto || [];
-
-        document.getElementById('status').style.display = 'none';
-
-        renderizarLista('totalMes', 'lista-mes');
-        renderizarLista('totalGeral', 'lista-geral');
-        renderizarTopSabores();
-
-        // Popular o combobox de clientes no login do labirinto
-        popularComboboxClientes();
-
-        // Renderizar ranking do labirinto
-        renderizarRankingLabirinto();
+        aplicarDados(dados);
+        salvarCacheLocal(dados);
 
     } catch (erro) {
-        document.getElementById('status').innerText = "Erro ao carregar o ranking. Tente novamente mais tarde.";
+        if (!dadosLocais) {
+            document.getElementById('status').innerText = "Erro ao carregar o ranking. Tente novamente mais tarde.";
+        } else {
+            console.warn('Não foi possível atualizar os dados; exibindo a última versão salva.', erro);
+        }
     }
 }
 
@@ -44,19 +97,29 @@ function popularComboboxClientes() {
     const select = document.getElementById('maze-cliente-select');
     if (!select) return;
 
+    // Mantém a seleção atual após atualizar a lista
+    const selecionadoAntes = select.value;
+
     select.innerHTML = '<option value="">Selecione seu nome...</option>';
 
     // Ordenar clientes por nome
     const clientesOrdenados = [...listaClientesGlobal].sort((a, b) =>
-        a.nome.localeCompare(b.nome, 'pt-BR')
+        String(a.nome).localeCompare(String(b.nome), 'pt-BR')
     );
 
+    const fragmento = document.createDocumentFragment();
     clientesOrdenados.forEach(function (cliente) {
         const option = document.createElement('option');
         option.value = cliente.id;
         option.textContent = cliente.nome;
-        select.appendChild(option);
+        fragmento.appendChild(option);
     });
+    select.appendChild(fragmento);
+
+    if (selecionadoAntes) {
+        select.value = selecionadoAntes;
+        if (select.value !== selecionadoAntes) select.value = '';
+    }
 }
 
 /**
@@ -144,11 +207,11 @@ function renderizarRankingLabirinto() {
             <div class="${cardClass}" id="maze-rank-${posicao}">
                 <div class="${posClass}">${posicao}º</div>
                 <div class="maze-rank-info">
-                    <div class="maze-rank-name">${nomeCliente}</div>
+                    <div class="maze-rank-name">${escaparHTML(nomeCliente)}</div>
                     <div class="maze-rank-date">${dataFormatada}</div>
                 </div>
                 <div class="maze-rank-time">
-                    ${tempo}<small>s</small>
+                    ${escaparHTML(tempo)}<small>s</small>
                 </div>
             </div>
         `;
@@ -370,6 +433,13 @@ async function salvarResultadoLabirinto(tempoGasto) {
                 Tempo: tempoGasto
             });
             renderizarRankingLabirinto();
+
+            // Mantém o resultado após o reload
+            const dadosLocais = lerCacheLocal();
+            if (dadosLocais) {
+                dadosLocais.rankingLabirinto = rankingLabirintoGlobal;
+                salvarCacheLocal(dadosLocais);
+            }
         }
     } catch (erro) {
         // Silenciosamente falhar, o resultado já foi exibido no jogo
@@ -384,7 +454,7 @@ async function salvarResultadoLabirinto(tempoGasto) {
 
 function renderizarLista(criterio, elementId) {
     const container = document.getElementById(elementId);
-    container.innerHTML = '';
+    let html = '';
 
     // Cria uma cópia da lista e ordena do maior para o menor pontuador
     let listaOrdenada = [...dadosGlobais].sort((a, b) => b[criterio] - a[criterio]);
@@ -435,15 +505,17 @@ function renderizarLista(criterio, elementId) {
             <div class="cliente-card">
                 <div class="posicao ${classePosicao}">${posicao}º</div>
                 <div class="info">
-                    <div class="nome">${cliente.nome}</div>
+                    <div class="nome">${escaparHTML(cliente.nome)}</div>
                     ${promoHtml}
                 </div>
-                <div class="pontos">${trufas}</div>
+                <div class="pontos">${escaparHTML(trufas)}</div>
             </div>
         `;
 
-        container.innerHTML += card;
+        html += card;
     });
+
+    container.innerHTML = html;
 }
 
 /**
@@ -492,8 +564,8 @@ function renderizarTopSabores() {
             <div class="sabor-item" id="sabor-${index + 1}">
                 <div class="sabor-header">
                     <span class="sabor-medalha">${medalha}</span>
-                    <span class="sabor-nome">${sabor.nome}</span>
-                    <span class="sabor-total">${sabor.total}</span>
+                    <span class="sabor-nome">${escaparHTML(sabor.nome)}</span>
+                    <span class="sabor-total">${escaparHTML(sabor.total)}</span>
                 </div>
                 <div class="sabor-bar-container">
                     <div class="sabor-bar-fill" style="width: ${percentual}%; background: ${cor};"></div>
