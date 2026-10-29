@@ -1140,3 +1140,337 @@ h1 {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+
+
+/* ====================================================
+   PAINEL DE RESULTADO (Pós-Jogo, sem reload)
+   ==================================================== */
+
+.result-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at 50% 30%, rgba(212, 163, 115, 0.35), transparent 60%),
+        rgba(58, 42, 30, 0.9);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.result-overlay.visible {
+    opacity: 1;
+}
+
+.result-overlay.is-lose {
+    background:
+        radial-gradient(circle at 50% 30%, rgba(231, 76, 60, 0.25), transparent 60%),
+        rgba(58, 42, 30, 0.92);
+}
+
+.result-card {
+    width: 100%;
+    max-width: 290px;
+    padding: 22px 18px 18px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    color: #fff;
+    text-align: center;
+    transform: translateY(12px) scale(0.96);
+    transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.result-overlay.visible .result-card {
+    transform: translateY(0) scale(1);
+}
+
+/* Ícone + confete */
+.result-icon-wrap {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result-icon {
+    font-size: 46px;
+    line-height: 1;
+    animation: resultIconPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+.is-lose .result-icon {
+    animation: resultIconPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.4) both,
+               resultShake 0.5s ease 0.6s;
+}
+
+@keyframes resultIconPop {
+    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@keyframes resultShake {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-12deg); }
+    75% { transform: rotate(12deg); }
+}
+
+.result-confetti {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 2px;
+    background: var(--cor);
+    opacity: 0;
+    animation: resultConfetti 0.9s ease-out var(--atraso) forwards;
+}
+
+@keyframes resultConfetti {
+    0% { transform: rotate(var(--ang)) translateY(0) scale(0.6); opacity: 1; }
+    100% { transform: rotate(var(--ang)) translateY(-58px) scale(1) rotate(180deg); opacity: 0; }
+}
+
+.result-title {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+
+.result-desc {
+    margin: 4px 0 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.result-time {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+    margin: 2px 0 12px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FFD700, #D4A373);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.result-time span {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.result-time small {
+    font-size: 20px;
+}
+
+/* Status do envio: saving | saved | error */
+.result-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 8px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.result-save-text {
+    text-align: left;
+}
+
+.result-save-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.result-save[data-state="saving"] .result-save-icon {
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #FFD700;
+    animation: resultSpin 0.8s linear infinite;
+}
+
+.result-save[data-state="saving"] .result-save-text {
+    animation: reloadPulse 1.5s ease-in-out infinite;
+}
+
+.result-save[data-state="saved"] {
+    background: rgba(39, 174, 96, 0.22);
+    border-color: rgba(46, 204, 113, 0.5);
+    animation: statusPop 0.4s ease;
+}
+
+.result-save[data-state="saved"] .result-save-icon {
+    background: #2ecc71;
+}
+
+.result-save[data-state="saved"] .result-save-icon::after {
+    content: '';
+    position: absolute;
+    left: 4.5px;
+    top: 2px;
+    width: 3px;
+    height: 6px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.result-save[data-state="error"] {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+    border-radius: 12px;
+    animation: shakeError 0.3s ease;
+}
+
+.result-save[data-state="error"] .result-save-icon {
+    display: none;
+}
+
+@keyframes resultSpin {
+    to { transform: rotate(360deg); }
+}
+
+.result-rank {
+    min-height: 18px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.result-rank:empty {
+    min-height: 0;
+    margin-top: 0;
+}
+
+.result-rank strong {
+    color: #FFD700;
+}
+
+/* Botões */
+.result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.result-actions:empty {
+    margin-top: 0;
+}
+
+.result-btn {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    touch-action: manipulation;
+}
+
+.result-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+.result-btn:active {
+    transform: translateY(0);
+}
+
+.result-btn-primary {
+    border: none;
+    background: linear-gradient(135deg, #D4A373, #c4935f);
+    box-shadow: 0 4px 14px rgba(212, 163, 115, 0.45);
+}
+
+.result-btn-primary:hover {
+    background: linear-gradient(135deg, #e0b083, #D4A373);
+}
+
+/* Contagem para voltar ao login */
+.result-return {
+    margin-top: 12px;
+}
+
+.result-return[hidden] {
+    display: none;
+}
+
+.result-return-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 6px;
+}
+
+.result-return-bar {
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+}
+
+.result-return-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #D4A373, #FFD700);
+}
+
+/* Saída suave da área do jogo ao voltar para o login */
+.maze-game-area.is-leaving {
+    opacity: 0;
+    transform: scale(0.97);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Destaque do jogador no ranking do labirinto */
+.maze-rank-card.is-highlight {
+    border-color: rgba(230, 126, 34, 0.6);
+    box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.25);
+    animation: mazeRankSlide 0.4s ease forwards, rankHighlight 1.6s ease-in-out 0.5s 3;
+}
+
+@keyframes rankHighlight {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.25); }
+    50% { box-shadow: 0 0 0 5px rgba(230, 126, 34, 0.15), 0 0 16px rgba(230, 126, 34, 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .result-confetti {
+        display: none;
+    }
+
+    .result-icon,
+    .maze-rank-card.is-highlight {
+        animation: none !important;
+        opacity: 1;
+    }
+}

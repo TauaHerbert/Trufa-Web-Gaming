@@ -123,27 +123,13 @@ function popularComboboxClientes() {
 }
 
 /**
- * Renderiza o ranking do labirinto (Top 10 melhores tempos).
+ * Calcula o Top 10 do labirinto (melhor tempo de cada cliente).
  */
-function renderizarRankingLabirinto() {
-    const container = document.getElementById('maze-ranking-list');
-    if (!container) return;
-
-    if (!rankingLabirintoGlobal || rankingLabirintoGlobal.length === 0) {
-        container.innerHTML = '<div class="maze-ranking-empty">Nenhuma jogada registrada ainda. Seja o primeiro! 🎮</div>';
-        return;
-    }
-
-    // Criar mapa de nomes dos clientes
-    const mapaClientes = {};
-    listaClientesGlobal.forEach(function (c) {
-        mapaClientes[String(c.id)] = c.nome;
-    });
-
+function calcularTop10Labirinto() {
     // Agrupar por cliente e manter apenas o MELHOR TEMPO de cada um
     const melhorPorCliente = {};
 
-    rankingLabirintoGlobal.forEach(function (item) {
+    (rankingLabirintoGlobal || []).forEach(function (item) {
         const idCliente = String(item.ID_Cliente);
         const tempo = parseFloat(item.Tempo) || 9999;
 
@@ -164,7 +150,31 @@ function renderizarRankingLabirinto() {
     const ranking = Object.values(melhorPorCliente).sort((a, b) => a.tempo - b.tempo);
 
     // Top 10
-    const top10 = ranking.slice(0, 10);
+    return ranking.slice(0, 10);
+}
+
+/**
+ * Renderiza o ranking do labirinto (Top 10 melhores tempos).
+ * idDestaque (opcional): cliente que acabou de jogar, destacado na lista.
+ */
+function renderizarRankingLabirinto(idDestaque) {
+    const container = document.getElementById('maze-ranking-list');
+    if (!container) return;
+
+    const top10 = calcularTop10Labirinto();
+
+    if (top10.length === 0) {
+        container.innerHTML = '<div class="maze-ranking-empty">Nenhuma jogada registrada ainda. Seja o primeiro! 🎮</div>';
+        return;
+    }
+
+    // Criar mapa de nomes dos clientes
+    const mapaClientes = {};
+    listaClientesGlobal.forEach(function (c) {
+        mapaClientes[String(c.id)] = c.nome;
+    });
+
+    const destaque = idDestaque !== undefined && idDestaque !== null ? String(idDestaque) : null;
 
     let html = '';
 
@@ -203,6 +213,10 @@ function renderizarRankingLabirinto() {
             posClass = 'maze-rank-pos pos-3';
         }
 
+        if (destaque && item.idCliente === destaque) {
+            cardClass += ' is-highlight';
+        }
+
         html += `
             <div class="${cardClass}" id="maze-rank-${posicao}">
                 <div class="${posClass}">${posicao}º</div>
@@ -233,6 +247,9 @@ async function validarPinEJogar() {
     const pinInput = document.getElementById('maze-pin-input');
     const errorEl = document.getElementById('maze-login-error');
     const loginBtn = document.getElementById('maze-login-btn');
+
+    // Evita requisições duplicadas (duplo clique / Enter repetido)
+    if (loginBtn.disabled) return;
 
     const idCliente = select.value;
     const pin = pinInput.value.trim();
@@ -405,46 +422,410 @@ function iniciarContagemRegressiva() {
     }, 5200);
 }
 
+/* ================================================
+   FIM DE PARTIDA
+   Salva o resultado (com retentativas), exibe o painel
+   de resultado e volta ao login SEM recarregar a página.
+   ================================================ */
+
+const SALVAR_TIMEOUT_MS = 15000;     // tempo máximo de cada tentativa
+const SALVAR_MAX_TENTATIVAS = 3;     // tentativas em falha de rede / servidor ocupado
+const VOLTAR_LOGIN_VITORIA_S = 6;    // segundos até voltar ao login após salvar
+const VOLTAR_LOGIN_DERROTA_S = 5;    // segundos até voltar ao login após perder
+const VOLTAR_LOGIN_ERRO_S = 8;       // segundos até voltar após erro definitivo
+const ATRASO_PAINEL_MS = 700;        // deixa o jogador ver a trufa antes do painel
+
+let salvamentoPendente = false;
+let intervaloVoltarLogin = null;
+let timeoutPainel = null;
+let timeoutsMensagemSalvar = [];
+
+// Avisa antes de fechar a aba enquanto o resultado ainda está sendo enviado
+window.addEventListener('beforeunload', function (e) {
+    if (salvamentoPendente) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+function esperar(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
 /**
- * Salva o resultado do labirinto via POST.
+ * Envia o tempo ao backend.
+ * Repete em falhas de rede, timeout ou "servidor ocupado" (o backend aceita
+ * reenvio do mesmo idPartida + tempo sem duplicar).
+ * Nunca rejeita: devolve { sucesso, rankingLabirinto?, erro?, definitivo? }.
  */
-async function salvarResultadoLabirinto(tempoGasto) {
-    if (!jogadorAutenticado) return;
+async function enviarTempoLabirinto(idCliente, idPartida, tempo) {
+    let ultimoErro = 'Erro de conexão.';
 
-    try {
-        const resposta = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                acao: 'salvar_tempo',
-                idCliente: jogadorAutenticado.id,
-                idPartida: partidaAtualId,
-                tempo: tempoGasto
-            }),
-            redirect: 'follow'
-        });
+    for (let tentativa = 1; tentativa <= SALVAR_MAX_TENTATIVAS; tentativa++) {
+        const controlador = new AbortController();
+        const timer = setTimeout(function () { controlador.abort(); }, SALVAR_TIMEOUT_MS);
 
-        const resultado = await resposta.json();
+        try {
+            const resposta = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    acao: 'salvar_tempo',
+                    idCliente: idCliente,
+                    idPartida: idPartida,
+                    tempo: tempo
+                }),
+                redirect: 'follow',
+                keepalive: true, // continua o envio mesmo se a aba for fechada
+                signal: controlador.signal
+            });
+
+            const resultado = JSON.parse(await resposta.text());
+            if (typeof resultado.sucesso === 'undefined') {
+                throw new Error('Resposta inesperada do servidor');
+            }
+            if (resultado.sucesso) return resultado;
+
+            const erro = String(resultado.erro || resultado.mensagem || 'Erro desconhecido.');
+
+            // Backend antigo: um reenvio que chega depois de já ter salvo responde isto
+            if (tentativa > 1 && /já foi registrado/i.test(erro)) {
+                return { sucesso: true };
+            }
+
+            if (/ocupado/i.test(erro)) {
+                ultimoErro = erro; // vale tentar de novo
+            } else {
+                return { sucesso: false, erro: erro, definitivo: true };
+            }
+        } catch (e) {
+            ultimoErro = (e && e.name === 'AbortError')
+                ? 'O servidor demorou para responder.'
+                : 'Erro de conexão.';
+        } finally {
+            clearTimeout(timer);
+        }
+
+        if (tentativa < SALVAR_MAX_TENTATIVAS) {
+            await esperar(1000 * tentativa);
+        }
+    }
+
+    return { sucesso: false, erro: ultimoErro, definitivo: false };
+}
+
+/**
+ * Chamado pelo jogo (jogo-trufa/script.js) ao vencer ou perder.
+ */
+function finalizarPartidaLabirinto(venceu, tempoGasto) {
+    const jogador = jogadorAutenticado;
+    const idPartida = partidaAtualId;
+
+    // O envio começa imediatamente; o painel aparece logo depois
+    let envio = null;
+    if (venceu && jogador && idPartida) {
+        envio = iniciarEnvio(jogador.id, idPartida, tempoGasto);
+    }
+
+    clearTimeout(timeoutPainel);
+    timeoutPainel = setTimeout(function () {
+        const painel = criarPainelResultado(venceu, tempoGasto);
+
+        if (!venceu) {
+            iniciarVoltaAoLogin(painel, VOLTAR_LOGIN_DERROTA_S);
+            return;
+        }
+
+        if (!envio) {
+            atualizarEstadoSalvar(painel, 'error', '⚠️ Resultado não enviado: sessão inválida.');
+            iniciarVoltaAoLogin(painel, VOLTAR_LOGIN_ERRO_S);
+            return;
+        }
+
+        acompanharEnvio(painel, envio, jogador.id, idPartida, tempoGasto);
+    }, ATRASO_PAINEL_MS);
+}
+
+function iniciarEnvio(idCliente, idPartida, tempo) {
+    salvamentoPendente = true;
+    return enviarTempoLabirinto(idCliente, idPartida, tempo).then(function (resultado) {
+        salvamentoPendente = false;
+        return resultado;
+    });
+}
+
+/**
+ * Mostra o progresso do envio no painel e trata o resultado.
+ */
+function acompanharEnvio(painel, envio, idCliente, idPartida, tempo) {
+    atualizarEstadoSalvar(painel, 'saving', 'Salvando seu resultado...');
+    painel.querySelector('.result-actions').innerHTML = '';
+    painel.querySelector('.result-rank').textContent = '';
+
+    // Mensagens progressivas para mascarar a espera
+    limparMensagensSalvar();
+    timeoutsMensagemSalvar.push(setTimeout(function () {
+        atualizarEstadoSalvar(painel, 'saving', 'Registrando no ranking...');
+    }, 2500));
+    timeoutsMensagemSalvar.push(setTimeout(function () {
+        atualizarEstadoSalvar(painel, 'saving', 'A conexão está lenta, quase lá...');
+    }, 7000));
+
+    envio.then(function (resultado) {
+        limparMensagensSalvar();
+        if (!painel.isConnected) return;
 
         if (resultado.sucesso) {
-            // Atualizar ranking local com o novo resultado
-            rankingLabirintoGlobal.push({
-                ID_Cliente: jogadorAutenticado.id,
-                Data: new Date().toISOString(),
-                Tempo: tempoGasto
-            });
-            renderizarRankingLabirinto();
-
-            // Mantém o resultado após o reload
-            const dadosLocais = lerCacheLocal();
-            if (dadosLocais) {
-                dadosLocais.rankingLabirinto = rankingLabirintoGlobal;
-                salvarCacheLocal(dadosLocais);
-            }
+            atualizarEstadoSalvar(painel, 'saved', 'Resultado salvo!');
+            const info = aplicarRankingAposSalvar(resultado, idCliente, tempo);
+            painel.querySelector('.result-rank').innerHTML = montarMensagemPosicao(info, tempo);
+            adicionarBotaoVoltar(painel, 'Voltar agora');
+            iniciarVoltaAoLogin(painel, VOLTAR_LOGIN_VITORIA_S);
+            return;
         }
-    } catch (erro) {
-        // Silenciosamente falhar, o resultado já foi exibido no jogo
-        console.error('Erro ao salvar resultado:', erro);
+
+        if (resultado.definitivo) {
+            atualizarEstadoSalvar(painel, 'error', '⚠️ ' + resultado.erro);
+            adicionarBotaoVoltar(painel, 'Voltar ao início');
+            iniciarVoltaAoLogin(painel, VOLTAR_LOGIN_ERRO_S);
+            return;
+        }
+
+        // Falha temporária: deixa o jogador tentar de novo (sem voltar sozinho)
+        atualizarEstadoSalvar(painel, 'error', '⚠️ Não foi possível salvar. ' + resultado.erro);
+        const acoes = painel.querySelector('.result-actions');
+        const btnTentar = document.createElement('button');
+        btnTentar.type = 'button';
+        btnTentar.id = 'maze-result-retry';
+        btnTentar.className = 'result-btn result-btn-primary';
+        btnTentar.textContent = '🔄 Tentar novamente';
+        btnTentar.addEventListener('click', function () {
+            acompanharEnvio(painel, iniciarEnvio(idCliente, idPartida, tempo), idCliente, idPartida, tempo);
+        });
+        acoes.appendChild(btnTentar);
+        adicionarBotaoVoltar(painel, 'Voltar ao início');
+    });
+}
+
+function limparMensagensSalvar() {
+    timeoutsMensagemSalvar.forEach(clearTimeout);
+    timeoutsMensagemSalvar = [];
+}
+
+/**
+ * Atualiza o ranking com a resposta do servidor (ou localmente, se o
+ * backend não devolver o ranking) e retorna a posição do jogador.
+ */
+function aplicarRankingAposSalvar(resultado, idCliente, tempo) {
+    if (Array.isArray(resultado.rankingLabirinto)) {
+        rankingLabirintoGlobal = resultado.rankingLabirinto;
+    } else {
+        rankingLabirintoGlobal.push({
+            ID_Cliente: idCliente,
+            Data: new Date().toISOString(),
+            Tempo: tempo
+        });
     }
+
+    renderizarRankingLabirinto(idCliente);
+
+    // Mantém o ranking atualizado no cache local
+    const dadosLocais = lerCacheLocal();
+    if (dadosLocais) {
+        dadosLocais.rankingLabirinto = rankingLabirintoGlobal;
+        salvarCacheLocal(dadosLocais);
+    }
+
+    const top10 = calcularTop10Labirinto();
+    const indice = top10.findIndex(function (item) { return item.idCliente === String(idCliente); });
+    return {
+        posicao: indice + 1,
+        melhorTempo: indice >= 0 ? top10[indice].tempo : null
+    };
+}
+
+function montarMensagemPosicao(info, tempo) {
+    if (info.posicao <= 0) {
+        return 'Continue tentando para entrar no <strong>Top 10</strong>! 💪';
+    }
+    if (info.melhorTempo !== null && info.melhorTempo < tempo) {
+        return 'Seu recorde continua sendo <strong>' + escaparHTML(info.melhorTempo) +
+            's</strong> (' + info.posicao + 'º lugar)';
+    }
+    if (info.posicao === 1) {
+        return '🥇 Você é o <strong>novo líder</strong> do ranking!';
+    }
+    return '🏆 Você está em <strong>' + info.posicao + 'º lugar</strong> no ranking!';
+}
+
+/**
+ * Cria o painel de resultado sobre a área do jogo.
+ */
+function criarPainelResultado(venceu, tempoGasto) {
+    const gameArea = document.getElementById('maze-game-area');
+    const antigo = document.getElementById('maze-result-overlay');
+    if (antigo) antigo.remove();
+
+    const painel = document.createElement('div');
+    painel.id = 'maze-result-overlay';
+    painel.className = 'result-overlay ' + (venceu ? 'is-win' : 'is-lose');
+    painel.setAttribute('role', 'status');
+    painel.setAttribute('aria-live', 'polite');
+
+    let confete = '';
+    if (venceu) {
+        const cores = ['#FFD700', '#D4A373', '#ffffff', '#e67e22', '#f5e6d3'];
+        for (let i = 0; i < 14; i++) {
+            const angulo = (360 / 14) * i;
+            confete += '<span class="result-confetti" style="--ang:' + angulo + 'deg;--cor:' +
+                cores[i % cores.length] + ';--atraso:' + (i % 3) * 0.05 + 's"></span>';
+        }
+    }
+
+    const conteudoVitoria =
+        '<div class="result-icon-wrap">' + confete + '<div class="result-icon">🎉</div></div>' +
+        '<h3 class="result-title">Você encontrou a trufa!</h3>' +
+        '<div class="result-time"><span>' + escaparHTML(tempoGasto) + '</span><small>s</small></div>' +
+        '<div class="result-save" id="maze-result-save" data-state="saving">' +
+            '<span class="result-save-icon" aria-hidden="true"></span>' +
+            '<span class="result-save-text">Salvando seu resultado...</span>' +
+        '</div>' +
+        '<div class="result-rank" id="maze-result-rank"></div>';
+
+    const conteudoDerrota =
+        '<div class="result-icon-wrap"><div class="result-icon">⏰</div></div>' +
+        '<h3 class="result-title">Tempo esgotado!</h3>' +
+        '<p class="result-desc">Sua tentativa de hoje foi usada.<br>Volte amanhã para tentar de novo! 🍫</p>' +
+        '<div class="result-rank" id="maze-result-rank"></div>';
+
+    painel.innerHTML =
+        '<div class="result-card">' +
+            (venceu ? conteudoVitoria : conteudoDerrota) +
+            '<div class="result-actions" id="maze-result-actions"></div>' +
+            '<div class="result-return" id="maze-result-return" hidden>' +
+                '<div class="result-return-text"></div>' +
+                '<div class="result-return-bar"><div class="result-return-fill"></div></div>' +
+            '</div>' +
+        '</div>';
+
+    gameArea.appendChild(painel);
+    painel.offsetHeight; // reflow para a transição de entrada
+    painel.classList.add('visible');
+
+    if (!venceu) adicionarBotaoVoltar(painel, 'Voltar agora');
+    return painel;
+}
+
+function atualizarEstadoSalvar(painel, estado, texto) {
+    const caixa = painel.querySelector('.result-save');
+    if (!caixa) return;
+    caixa.dataset.state = estado;
+    caixa.querySelector('.result-save-text').textContent = texto;
+}
+
+function adicionarBotaoVoltar(painel, rotulo) {
+    const acoes = painel.querySelector('.result-actions');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'maze-result-back';
+    btn.className = 'result-btn';
+    btn.textContent = rotulo;
+    btn.addEventListener('click', voltarParaLogin);
+    acoes.appendChild(btn);
+}
+
+/**
+ * Contagem regressiva (com barra) até voltar para o login.
+ */
+function iniciarVoltaAoLogin(painel, segundos) {
+    pararVoltaAoLogin();
+
+    const caixa = painel.querySelector('.result-return');
+    const texto = caixa.querySelector('.result-return-text');
+    const barra = caixa.querySelector('.result-return-fill');
+    let restante = segundos;
+
+    caixa.hidden = false;
+    texto.textContent = 'Voltando ao início em ' + restante + 's';
+
+    barra.style.transition = 'none';
+    barra.style.width = '100%';
+    barra.offsetWidth; // reflow
+    barra.style.transition = 'width ' + segundos + 's linear';
+    barra.style.width = '0%';
+
+    intervaloVoltarLogin = setInterval(function () {
+        restante--;
+        if (restante <= 0) {
+            voltarParaLogin();
+            return;
+        }
+        texto.textContent = 'Voltando ao início em ' + restante + 's';
+    }, 1000);
+}
+
+function pararVoltaAoLogin() {
+    if (intervaloVoltarLogin) {
+        clearInterval(intervaloVoltarLogin);
+        intervaloVoltarLogin = null;
+    }
+}
+
+/**
+ * Volta para a tela de login sem recarregar a página,
+ * limpando todo o estado da partida anterior.
+ */
+let voltandoParaLogin = false;
+function voltarParaLogin() {
+    if (voltandoParaLogin) return;
+    voltandoParaLogin = true;
+
+    pararVoltaAoLogin();
+    limparMensagensSalvar();
+    clearTimeout(timeoutPainel);
+
+    const gameArea = document.getElementById('maze-game-area');
+    gameArea.classList.add('is-leaving');
+
+    setTimeout(function () {
+        const painel = document.getElementById('maze-result-overlay');
+        if (painel) painel.remove();
+
+        jogadorAutenticado = null;
+        partidaAtualId = null;
+
+        if (typeof resetarJogoLabirinto === 'function') {
+            resetarJogoLabirinto();
+        }
+
+        gameArea.classList.remove('is-leaving');
+        gameArea.style.display = 'none';
+        document.getElementById('maze-player-badge').textContent = '';
+
+        resetarFormularioLogin();
+
+        const loginEl = document.getElementById('maze-login');
+        loginEl.style.display = '';
+        // Reinicia a animação de entrada do login
+        loginEl.style.animation = 'none';
+        loginEl.offsetHeight;
+        loginEl.style.animation = '';
+
+        voltandoParaLogin = false;
+    }, 300);
+}
+
+function resetarFormularioLogin() {
+    const select = document.getElementById('maze-cliente-select');
+    const pinInput = document.getElementById('maze-pin-input');
+    const errorEl = document.getElementById('maze-login-error');
+    const loginBtn = document.getElementById('maze-login-btn');
+
+    select.value = '';
+    pinInput.value = '';
+    errorEl.textContent = '';
+    errorEl.className = 'maze-login-error';
+    loginBtn.disabled = false;
+    loginBtn.textContent = '🎮 Validar e Jogar';
 }
 
 

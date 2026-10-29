@@ -40,7 +40,8 @@ let direcao = 'baixo';
 let saidaX, saidaY;
 let tempoRestante = CONFIG.gameDuration;
 let intervaloTimer = null;
-let jogoTerminou = false;
+// Começa como "terminado" para ignorar teclas/D-Pad antes de novoJogo()
+let jogoTerminou = true;
 
 // ===== Referências DOM =====
 const canvas = document.getElementById('game-canvas');
@@ -513,6 +514,7 @@ function pararTimer() {
  * Chamado quando o jogador encontra a trufa.
  */
 function vencer() {
+    if (jogoTerminou) return;
     jogoTerminou = true;
     pararTimer();
     pararAnimacao();
@@ -522,19 +524,14 @@ function vencer() {
     statusEl.className = 'game-status win';
     desenhar();
 
-    // Salvar resultado no servidor (se jogador autenticado)
-    if (typeof salvarResultadoLabirinto === 'function') {
-        salvarResultadoLabirinto(tempoGasto);
-    }
-
-    // Esconder botão novo jogo e agendar reload
-    agendarReloadPagina();
+    aoTerminarPartida(true, tempoGasto);
 }
 
 /**
  * Chamado quando o tempo se esgota.
  */
 function perder() {
+    if (jogoTerminou) return;
     jogoTerminou = true;
     pararTimer();
     pararAnimacao();
@@ -545,8 +542,38 @@ function perder() {
     // Redesenhar para mostrar o estado final
     desenhar();
 
-    // Agendar reload da página
-    agendarReloadPagina();
+    aoTerminarPartida(false, null);
+}
+
+/**
+ * Encaminha o fim da partida.
+ * Na página principal, script.js define finalizarPartidaLabirinto()
+ * (salva o resultado e volta ao login sem recarregar).
+ * Na versão standalone, mantém o reload automático.
+ */
+function aoTerminarPartida(venceu, tempoGasto) {
+    if (typeof finalizarPartidaLabirinto === 'function') {
+        finalizarPartidaLabirinto(venceu, tempoGasto);
+    } else {
+        agendarReloadPagina();
+    }
+}
+
+/**
+ * Deixa o jogo no estado inicial (parado, timer cheio, labirinto novo)
+ * sem iniciar a partida. Usado ao voltar para a tela de login.
+ */
+function resetarJogoLabirinto() {
+    jogoTerminou = true;
+    pararTimer();
+    pararAnimacao();
+    direcao = 'baixo';
+    tempoRestante = CONFIG.gameDuration;
+    atualizarBarraTimer();
+    statusEl.textContent = '';
+    statusEl.className = 'game-status';
+    gerarLabirinto();
+    desenhar();
 }
 
 /**
@@ -572,6 +599,8 @@ function novoJogo() {
 
 // --- Teclado (Setas + WASD) ---
 document.addEventListener('keydown', function (e) {
+    // Só captura as teclas durante a partida (não bloqueia select, inputs e scroll)
+    if (jogoTerminou) return;
     const tecla = e.key;
 
     if (tecla === 'ArrowUp' || tecla === 'w' || tecla === 'W') {
