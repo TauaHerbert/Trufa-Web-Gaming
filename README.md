@@ -28,7 +28,10 @@ O coração da integração. Um script rodando no ecossistema do Google Planilha
 * **Payload JSON (GET):** O método `doGet(e)` serializa e devolve a resposta estruturada em JSON contendo: `{ ranking, sabores, clientes, rankingLabirinto }`.
 * **Ações POST (`doPost`):** O método `doPost(e)` processa duas ações de escrita:
   * **`validar_acesso`** — Valida o PIN do cliente, verifica se já jogou hoje e registra a partida imediatamente com tempo `9999` (pendente). Retorna o `idPartida` gerado.
-  * **`salvar_tempo`** — Recebe o `idPartida` e o tempo real da vitória, localiza a linha correspondente na planilha e atualiza o tempo de `9999` para o valor real.
+  * **`salvar_tempo`** — Recebe o `idPartida` e o tempo real da vitória, atualiza o registro na planilha e devolve imediatamente o `rankingLabirinto` atualizado na mesma requisição.
+* **Idempotência e Cache Inteligente:**
+  * O endpoint `salvar_tempo` suporta reenvios sem falhar com erro de "partida já registrada", garantindo tolerância a instabilidades de rede.
+  * Ao salvar o resultado, o backend atualiza apenas o ranking do labirinto diretamente no cache existente (`CacheService`), evitando a invalidação total que causava lentidão na leitura da planilha.
 
 ### 4. Interface Web Gamificada (Front-end)
 Front-end hospedado no **GitHub Pages** (HTML, CSS, JS), consumindo a API gerada pelo Apps Script via requisições assíncronas (`fetch`). Atua como um painel de competição e entretenimento sem acesso direto ou edição à base de dados operacional.
@@ -45,8 +48,10 @@ A interface web do **Clube da Trufa** foi desenvolvida como uma *Single Page App
 turfas-web/
 ├── index.html              # Página principal (ranking + jogo integrado)
 ├── style.css               # Design system unificado (ranking + jogo)
-├── script.js               # Lógica do ranking e consumo da API
+├── script.js               # Lógica do ranking, autenticação e consumo da API
 ├── README.md               # Documentação do projeto
+├── backend/                # Código-fonte da API Google Apps Script
+│   └── Code.gs             # Backend otimizado (doGet, doPost, cache, idempotência)
 └── jogo-trufa/             # Mini jogo do labirinto
     ├── index.html          # Versão standalone do jogo (para testes)
     ├── style.css           # Estilos standalone do jogo
@@ -94,16 +99,20 @@ Um mini jogo de labirinto 2D embutido diretamente na página principal como **si
 
 * **Mecânica:** O jogador navega por um labirinto gerado aleatoriamente (algoritmo DFS Recursive Backtracker) para encontrar a trufa escondida no canto inferior direito antes que o tempo se esgote.
 * **Dificuldade:** Grade 20×20 células, 45 segundos de tempo limite e apenas ~12% de paredes removidas (poucas bifurcações, exigindo raciocínio).
-* **Controlos:** Setas do teclado, teclas WASD ou botões D-Pad na tela (otimizado para touch/mobile).
+* **Controlos:** Setas do teclado, teclas WASD ou botões D-Pad na tela (otimizado para touch/mobile). Os controles e teclas são bloqueados antes do início da partida.
 * **Efeitos visuais:** Trufa e jogador com brilho pulsante animado via `requestAnimationFrame`, halo dourado na saída e indicador direcional no jogador.
 * **Renderização:** HTML5 Canvas com paleta temática de chocolates (paredes castanho escuro, caminhos creme, jogador laranja, trufa castanho chocolate).
 * **Integração:** O HTML do jogo é embutido como `<aside class="game-sidebar">` e o script `jogo-trufa/script.js` é carregado na página principal.
-* **Autenticação:** O jogador seleciona o seu nome num combobox e insere um PIN numérico. O backend valida as credenciais via `doPost` com a ação `validar_acesso`.
+* **Autenticação:** O jogador seleciona o seu nome num combobox e insere um PIN numérico. Protegido contra cliques múltiplos e submissões repetidas.
 * **Registro antecipado de partida:** Ao validar o acesso, o backend grava imediatamente uma linha na aba `Resultados_Labirinto` com tempo `9999` (pendente) e devolve um `idPartida` único. Isso garante que a tentativa é consumida **antes** do jogo começar.
 * **Blindagem contra tentativas repetidas:** Se o jogador perder (tempo esgotado), recarregar a página (F5) ou fechar o navegador, o registro com `9999` já existe na planilha e impede nova tentativa no mesmo dia.
-* **Atualização em caso de vitória:** Quando o jogador encontra a trufa, o frontend envia o `idPartida` e o tempo real para o backend, que localiza a linha e atualiza o tempo de `9999` para o valor da vitória.
-* **Ranking do Labirinto:** Exibe os Top 10 melhores tempos (menores = mais rápidos), filtrando automaticamente registros com tempo `≥ 9999` (partidas não concluídas) para não exibi-los no ranking.
-* **Contagem regressiva:** Após validação, uma animação de contagem (Prepare-se → 3 → 2 → 1 → VAI!) é exibida antes do jogo iniciar.
+* **Painel de Resultado (Glassmorphism):** Ao finalizar a partida (vitória ou derrota), um modal elegante com efeito de desfoque é exibido sobre o jogo com animações de confetes e feedback em tempo real.
+* **Envio Resiliente e Mascaramento de Espera:**
+  * O envio do resultado utiliza `keepalive: true` e até 3 retentativas automáticas em caso de instabilidade na rede.
+  * Durante a espera da API, mensagens animadas guiam o usuário (*"Salvando seu resultado..."* ➔ *"Registrando no ranking..."* ➔ *"Resultado salvo!"*).
+  * Em caso de falha definitiva de rede, um botão de "Tentar novamente" permite retransmitir a pontuação sem perder o tempo conquistado.
+* **Atualização em Tempo Real e Destaque no Ranking:** A posição do jogador no ranking é calculada instantaneamente e o seu cartão na lista recebe um destaque pulsante (`is-highlight`).
+* **Retorno Suave sem Reload:** Após salvar (ou ao término do tempo), uma barra de contagem regressiva suave conduz o jogador de volta para a tela de login inicial via `resetarJogoLabirinto()`, sem recarregar a página (`location.reload()`), sem telas brancas e preservando a posição de scroll.
 
 #### 📐 Layout de Duas Colunas
 A página principal foi reestruturada com um layout flex de duas colunas para acomodar o jogo e o ranking lado a lado:
