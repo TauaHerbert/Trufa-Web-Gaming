@@ -25,9 +25,10 @@ Aplicativo de uso interno para gestão do fluxo de caixa e registo rápido de pe
 O coração da integração. Um script rodando no ecossistema do Google Planilhas que atua como uma API blindada para conectar o banco de dados ao aplicativo Web.
 * **Segurança e Sanitização:** Em vez de expor a planilha publicamente (o que comprometeria dados financeiros sensíveis), a API lê a base de dados no back-end e devolve apenas as informações estritamente necessárias.
 * **Regras de Negócio no Back-end:** O script cruza os IDs de vendas e itens, filtra exclusivamente as compras do polo varejista e calcula automaticamente o módulo promocional (Compre 10, Ganhe 1).
-* **Payload JSON (GET):** O método `doGet(e)` serializa e devolve a resposta estruturada em JSON contendo: `{ ranking, sabores, clientes, rankingLabirinto }`.
+* **Payload JSON (GET):** O método `doGet(e)` serializa e devolve a resposta estruturada em JSON contendo: `{ ranking, sabores, clientes, rankingLabirinto, semanaLabirinto }`.
+* **Ciclo Semanal do Labirinto:** O ranking do labirinto filtra automaticamente apenas as partidas de **Segunda a Sexta** da semana corrente (fuso `America/Recife`). No **Sábado e Domingo**, novas partidas são bloqueadas e o painel exibe o resultado consolidado da semana. Na virada de **Domingo para Segunda (`00:00`)**, o painel zera automaticamente para iniciar um novo ciclo semanal.
 * **Ações POST (`doPost`):** O método `doPost(e)` processa duas ações de escrita:
-  * **`validar_acesso`** — Valida o PIN do cliente, verifica se já jogou hoje e registra a partida imediatamente com tempo `9999` (pendente). Retorna o `idPartida` gerado.
+  * **`validar_acesso`** — Verifica se a competição está ativa (Segunda a Sexta), valida o PIN do cliente, verifica se já jogou hoje e registra a partida imediatamente com tempo `9999` (pendente). Retorna o `idPartida` gerado.
   * **`salvar_tempo`** — Recebe o `idPartida` e o tempo real da vitória, atualiza o registro na planilha e devolve imediatamente o `rankingLabirinto` atualizado na mesma requisição.
 * **Idempotência e Cache Inteligente:**
   * O endpoint `salvar_tempo` suporta reenvios sem falhar com erro de "partida já registrada", garantindo tolerância a instabilidades de rede.
@@ -113,6 +114,19 @@ Um mini jogo de labirinto 2D embutido diretamente na página principal como **si
   * Em caso de falha definitiva de rede, um botão de "Tentar novamente" permite retransmitir a pontuação sem perder o tempo conquistado.
 * **Atualização em Tempo Real e Destaque no Ranking:** A posição do jogador no ranking é calculada instantaneamente e o seu cartão na lista recebe um destaque pulsante (`is-highlight`).
 * **Retorno Suave sem Reload:** Após salvar (ou ao término do tempo), uma barra de contagem regressiva suave conduz o jogador de volta para a tela de login inicial via `resetarJogoLabirinto()`, sem recarregar a página (`location.reload()`), sem telas brancas e preservando a posição de scroll.
+
+#### 📅 Ciclo Semanal do Ranking do Labirinto (Segunda a Sexta)
+A competição do labirinto opera em um **ciclo semanal automatizado** (baseado no fuso horário `America/Recife` — `UTC-3`), dividindo a semana entre o período de disputa e o período de exibição de resultados:
+
+| Período | Estado da Competição | Comportamento do Painel |
+|---------|----------------------|-------------------------|
+| **Segunda a Sexta** (`00:00` de seg às `23:59` de sex) | 🟢 **Competição Ativa** | O login por PIN e o jogo do labirinto ficam liberados (1 tentativa por dia por cliente). O **Ranking da Semana** exibe apenas os melhores tempos registrados de segunda a sexta da semana corrente. |
+| **Sábado e Domingo** (Fim de Semana) | 🏁 **Exibição de Resultado** | Novas jogadas são bloqueadas (a área de login/jogo é recolhida na interface e validada no back-end). O painel exibe exclusivamente o **Resultado da Semana** (consolidado de segunda a sexta), destacando o 1º colocado com o selo **👑 Campeão da Semana**. |
+| **Virada de Domingo para Segunda** (`00:00` de segunda) | 🔄 **Reinício do Ciclo** | O painel **zera automaticamente** ao iniciar a janela da nova semana (sem apagar o histórico na planilha `Resultados_Labirinto`) e o jogo volta a ficar disponível para reiniciar a competição. |
+
+* **Sincronização Front-end e Back-end:**
+  * No **Back-end (`backend/Code.gs`)**, `obterCicloSemanalLabirinto_()` calcula o intervalo exato da semana atual (`inicioSemanaMs` a `fimSextaMs`), filtra o Top 10 em `calcularRankingLabirinto_()`, bloqueia tentativas no fim de semana em `validarAcesso_()` e invalida automaticamente o cache em `doGet()` na virada de ciclo (`chaveCiclo`).
+  * No **Front-end (`script.js`)**, `obterCicloSemanalLabirinto()` e `atualizarInterfaceCicloLabirinto()` ajustam o layout em tempo real e `verificarViradaCicloLabirinto()` monitora a mudança de meia-noite (`00:00`) mesmo que a página permaneça aberta no navegador.
 
 #### 📐 Layout de Duas Colunas
 A página principal foi reestruturada com um layout flex de duas colunas para acomodar o jogo e o ranking lado a lado:

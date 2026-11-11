@@ -84,10 +84,15 @@
 
             <!-- ===== Ranking do Labirinto ===== -->
             <div class="maze-ranking-section" id="maze-ranking-section">
-                <h3 class="maze-ranking-title">🏆 Ranking do Labirinto</h3>
-                <p class="maze-ranking-subtitle">Os mais rápidos a encontrar a trufa</p>
+                <div class="maze-weekend-badge" id="maze-weekend-badge" hidden>🏁 Resultado Oficial da Semana</div>
+                <h3 class="maze-ranking-title" id="maze-ranking-title">🏆 Ranking da Semana</h3>
+                <p class="maze-ranking-subtitle" id="maze-ranking-subtitle">Os mais rápidos da semana (Segunda a Sexta)</p>
                 <div class="maze-ranking-list" id="maze-ranking-list">
                     <div class="maze-ranking-loading">Carregando ranking...</div>
+                </div>
+                <div class="maze-weekend-notice" id="maze-weekend-notice" hidden>
+                    <strong>🔒 Competição de Segunda a Sexta</strong>
+                    <span>Sábado e domingo exibem o resultado geral da semana. Na virada de domingo para segunda o painel zera e uma nova disputa começa!</span>
                 </div>
             </div>
         </aside>

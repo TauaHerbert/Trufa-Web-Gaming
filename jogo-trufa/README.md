@@ -90,6 +90,7 @@ O jogo está integrado na página principal do ranking (`../index.html`) como um
 - Os estilos do jogo estão incluídos no `../style.css` principal
 - Em ecrãs ≥ 900px: o jogo aparece como sidebar fixa à esquerda
 - Em ecrãs < 900px: o jogo aparece no topo, acima do ranking
+- **Ciclo Semanal da Competição:** Na página principal, a competição funciona de **Segunda a Sexta** (exibindo o ranking semanal em tempo real). No **Sábado e Domingo**, o jogo é recolhido para exibir apenas o **Resultado Geral da Semana** (com destaque para o Campeão da Semana), e na **virada de Domingo para Segunda (`00:00`)** o painel zera automaticamente para reiniciar o ciclo.
 
 > **Nota:** O ficheiro `index.html` dentro desta pasta é a versão **standalone** do jogo, que pode ser aberta independentemente para testes.
 

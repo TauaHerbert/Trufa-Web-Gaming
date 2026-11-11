@@ -5,6 +5,128 @@ let saboresGlobais = {};
 let listaClientesGlobal = [];
 let rankingLabirintoGlobal = [];
 
+// ===== Ciclo Semanal do Labirinto (Fuso America/Recife: UTC-3) =====
+const FUSO_RECIFE_OFFSET_MS = -3 * 60 * 60 * 1000;
+let ultimaChaveCicloLabirinto = null;
+
+/**
+ * Calcula o ciclo semanal atual da competição do labirinto (fuso America/Recife):
+ * - Segunda a Sexta (diaISO 1..5): competição ativa (jogo liberado + ranking da semana).
+ * - Sábado e Domingo (diaISO 6..7): jogo encerrado; exibe apenas o resultado geral da semana.
+ * - Virada de Domingo para Segunda (00:00): o painel zera automaticamente e o ciclo recomeça.
+ */
+function obterCicloSemanalLabirinto(agoraMs) {
+    const refMs = typeof agoraMs === 'number' ? agoraMs : Date.now();
+    const dataLocal = new Date(refMs + FUSO_RECIFE_OFFSET_MS);
+
+    const diaSemana = dataLocal.getUTCDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+    const diaISO = diaSemana === 0 ? 7 : diaSemana; // 1 = Seg ... 7 = Dom
+    const diasDesdeSegunda = diaISO - 1;
+
+    const inicioHojeLocalMs = Date.UTC(
+        dataLocal.getUTCFullYear(),
+        dataLocal.getUTCMonth(),
+        dataLocal.getUTCDate(),
+        0, 0, 0, 0
+    );
+    const inicioSegundaLocalMs = inicioHojeLocalMs - (diasDesdeSegunda * 86400000);
+    const fimSextaLocalMs = inicioSegundaLocalMs + (5 * 86400000) - 1;
+
+    const inicioSemanaMs = inicioSegundaLocalMs - FUSO_RECIFE_OFFSET_MS;
+    const fimSextaMs = fimSextaLocalMs - FUSO_RECIFE_OFFSET_MS;
+    const competicaoAtiva = diaISO >= 1 && diaISO <= 5;
+
+    const dSeg = new Date(inicioSegundaLocalMs);
+    const dSex = new Date(fimSextaLocalMs);
+    const pad2 = function (n) { return String(n).padStart(2, '0'); };
+
+    const inicioFormatado = pad2(dSeg.getUTCDate()) + '/' + pad2(dSeg.getUTCMonth() + 1);
+    const fimFormatado = pad2(dSex.getUTCDate()) + '/' + pad2(dSex.getUTCMonth() + 1);
+    const chaveSegunda = dSeg.getUTCFullYear() + '-' + pad2(dSeg.getUTCMonth() + 1) + '-' + pad2(dSeg.getUTCDate());
+
+    return {
+        competicaoAtiva: competicaoAtiva,
+        ehFimDeSemana: !competicaoAtiva,
+        diaISO: diaISO,
+        inicioSemanaMs: inicioSemanaMs,
+        fimSextaMs: fimSextaMs,
+        inicioFormatado: inicioFormatado,
+        fimFormatado: fimFormatado,
+        chaveCiclo: chaveSegunda + '_' + (competicaoAtiva ? 'ativa' : 'encerrada')
+    };
+}
+
+function converterDataMsLabirinto(valor) {
+    if (!valor) return NaN;
+    if (valor instanceof Date) return valor.getTime();
+    const texto = String(valor).trim();
+    const m = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (m) {
+        const utcLocal = Date.UTC(
+            parseInt(m[3], 10),
+            parseInt(m[2], 10) - 1,
+            parseInt(m[1], 10),
+            parseInt(m[4] || '0', 10),
+            parseInt(m[5] || '0', 10),
+            parseInt(m[6] || '0', 10)
+        );
+        return utcLocal - FUSO_RECIFE_OFFSET_MS;
+    }
+    const d = new Date(texto);
+    return d.getTime();
+}
+
+function registroNaSemanaAtualLabirinto(dataValor, ciclo) {
+    const ts = converterDataMsLabirinto(dataValor);
+    if (isNaN(ts)) return false;
+    return ts >= ciclo.inicioSemanaMs && ts <= ciclo.fimSextaMs;
+}
+
+/**
+ * Atualiza a exibição da sidebar conforme o dia da semana:
+ * - Segunda a Sexta: exibe o jogo + Ranking da Semana.
+ * - Sábado e Domingo: oculta o jogo (se não houver partida em andamento) e destaca apenas o Resultado Geral da Semana.
+ */
+function atualizarInterfaceCicloLabirinto() {
+    const ciclo = obterCicloSemanalLabirinto();
+    ultimaChaveCicloLabirinto = ciclo.chaveCiclo;
+
+    const gameWrapper = document.getElementById('game-wrapper');
+    const rankingSection = document.getElementById('maze-ranking-section');
+    const badgeFimSemana = document.getElementById('maze-weekend-badge');
+    const tituloRanking = document.getElementById('maze-ranking-title');
+    const subtituloRanking = document.getElementById('maze-ranking-subtitle');
+    const avisoFimSemana = document.getElementById('maze-weekend-notice');
+
+    if (ciclo.ehFimDeSemana) {
+        // No sábado e domingo, se não houver uma partida iniciada antes da meia-noite de sexta, mostra apenas o resultado
+        const jogoEmAndamento = Boolean(jogadorAutenticado && partidaAtualId);
+        if (gameWrapper && !jogoEmAndamento) {
+            gameWrapper.style.display = 'none';
+        }
+        if (rankingSection) rankingSection.classList.add('is-weekend-result');
+        if (badgeFimSemana) badgeFimSemana.hidden = false;
+        if (tituloRanking) tituloRanking.textContent = '🏆 Resultado da Semana';
+        if (subtituloRanking) {
+            subtituloRanking.textContent = 'Classificação final da semana (' + ciclo.inicioFormatado + ' a ' + ciclo.fimFormatado + ')';
+        }
+        if (avisoFimSemana) avisoFimSemana.hidden = false;
+    } else {
+        if (gameWrapper) {
+            gameWrapper.style.display = '';
+        }
+        if (rankingSection) rankingSection.classList.remove('is-weekend-result');
+        if (badgeFimSemana) badgeFimSemana.hidden = true;
+        if (tituloRanking) tituloRanking.textContent = '🏆 Ranking da Semana';
+        if (subtituloRanking) {
+            subtituloRanking.textContent = 'Melhores tempos de Seg (' + ciclo.inicioFormatado + ') a Sex (' + ciclo.fimFormatado + ')';
+        }
+        if (avisoFimSemana) avisoFimSemana.hidden = true;
+    }
+
+    return ciclo;
+}
+
 // ===== Jogador autenticado =====
 let jogadorAutenticado = null; // { id, nome }
 let partidaAtualId = null;     // ID da partida registrada no backend ao validar acesso
@@ -60,11 +182,14 @@ function aplicarDados(dados) {
     // Popular o combobox de clientes no login do labirinto
     popularComboboxClientes();
 
-    // Renderizar ranking do labirinto
+    // Renderizar ranking do labirinto (e ajustar estado semanal)
     renderizarRankingLabirinto();
 }
 
 async function carregarRanking() {
+    // Ajusta imediatamente a interface conforme o dia da semana (Seg–Sex vs Sáb–Dom)
+    atualizarInterfaceCicloLabirinto();
+
     // Mostra o cache local primeiro e depois atualiza com a API
     const dadosLocais = lerCacheLocal();
     if (dadosLocais) {
@@ -123,19 +248,22 @@ function popularComboboxClientes() {
 }
 
 /**
- * Calcula o Top 10 do labirinto (melhor tempo de cada cliente).
+ * Calcula o Top 10 do labirinto na semana atual (Segunda a Sexta, melhor tempo de cada cliente).
  */
 function calcularTop10Labirinto() {
-    // Agrupar por cliente e manter apenas o MELHOR TEMPO de cada um
+    const ciclo = obterCicloSemanalLabirinto();
+    // Agrupar por cliente e manter apenas o MELHOR TEMPO de cada um na semana atual (Seg a Sex)
     const melhorPorCliente = {};
 
     (rankingLabirintoGlobal || []).forEach(function (item) {
-        const idCliente = String(item.ID_Cliente);
+        const idCliente = String(item.ID_Cliente || item.ID_cliente || '');
         const tempo = parseFloat(item.Tempo) || 9999;
 
-        // Ignorar registros com tempo 9999 (partidas não concluídas)
-        // para o cálculo do melhor tempo
-        if (tempo >= 9999) return;
+        // Ignorar registros inválidos ou com tempo 9999 (partidas não concluídas)
+        if (!idCliente || tempo <= 0 || tempo >= 9999) return;
+
+        // Filtrar estritamente pelas partidas de Segunda a Sexta da semana do ciclo atual
+        if (!registroNaSemanaAtualLabirinto(item.Data, ciclo)) return;
 
         if (!melhorPorCliente[idCliente] || tempo < melhorPorCliente[idCliente].tempo) {
             melhorPorCliente[idCliente] = {
@@ -154,17 +282,21 @@ function calcularTop10Labirinto() {
 }
 
 /**
- * Renderiza o ranking do labirinto (Top 10 melhores tempos).
+ * Renderiza o ranking do labirinto (Top 10 melhores tempos da semana).
  * idDestaque (opcional): cliente que acabou de jogar, destacado na lista.
  */
 function renderizarRankingLabirinto(idDestaque) {
+    const ciclo = atualizarInterfaceCicloLabirinto();
     const container = document.getElementById('maze-ranking-list');
     if (!container) return;
 
     const top10 = calcularTop10Labirinto();
 
     if (top10.length === 0) {
-        container.innerHTML = '<div class="maze-ranking-empty">Nenhuma jogada registrada ainda. Seja o primeiro! 🎮</div>';
+        const msgVazia = ciclo.ehFimDeSemana
+            ? 'Nenhuma partida registrada nesta semana (' + ciclo.inicioFormatado + ' a ' + ciclo.fimFormatado + '). A nova competição começa na segunda-feira! 🎮'
+            : 'Nenhuma jogada nesta semana ainda. Seja o primeiro a inaugurar o ranking! 🎮';
+        container.innerHTML = '<div class="maze-ranking-empty">' + escaparHTML(msgVazia) + '</div>';
         return;
     }
 
@@ -187,12 +319,16 @@ function renderizarRankingLabirinto(idDestaque) {
         let dataFormatada = '';
         if (item.data) {
             try {
-                const dataObj = new Date(item.data);
-                dataFormatada = dataObj.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
+                const ts = converterDataMsLabirinto(item.data);
+                if (!isNaN(ts)) {
+                    const dataObj = new Date(ts);
+                    dataFormatada = dataObj.toLocaleDateString('pt-BR', {
+                        timeZone: 'America/Recife',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                }
             } catch (e) {
                 dataFormatada = '';
             }
@@ -217,12 +353,16 @@ function renderizarRankingLabirinto(idDestaque) {
             cardClass += ' is-highlight';
         }
 
+        const seloCampeao = (ciclo.ehFimDeSemana && posicao === 1)
+            ? '<span class="maze-champion-tag">👑 Campeão da Semana</span>'
+            : '';
+
         html += `
             <div class="${cardClass}" id="maze-rank-${posicao}">
                 <div class="${posClass}">${posicao}º</div>
                 <div class="maze-rank-info">
                     <div class="maze-rank-name">${escaparHTML(nomeCliente)}</div>
-                    <div class="maze-rank-date">${dataFormatada}</div>
+                    <div class="maze-rank-date">${dataFormatada}${seloCampeao}</div>
                 </div>
                 <div class="maze-rank-time">
                     ${escaparHTML(tempo)}<small>s</small>
@@ -250,6 +390,14 @@ async function validarPinEJogar() {
 
     // Evita requisições duplicadas (duplo clique / Enter repetido)
     if (loginBtn.disabled) return;
+
+    const ciclo = obterCicloSemanalLabirinto();
+    if (!ciclo.competicaoAtiva) {
+        errorEl.textContent = '🏁 A competição funciona de segunda a sexta. No fim de semana exibimos o resultado da semana!';
+        errorEl.className = 'maze-login-error';
+        renderizarRankingLabirinto();
+        return;
+    }
 
     const idCliente = select.value;
     const pin = pinInput.value.trim();
@@ -691,10 +839,15 @@ function criarPainelResultado(venceu, tempoGasto) {
         '</div>' +
         '<div class="result-rank" id="maze-result-rank"></div>';
 
+    const ciclo = obterCicloSemanalLabirinto();
+    const textoDerrota = (ciclo.diaISO === 5 || ciclo.ehFimDeSemana)
+        ? 'Sua tentativa de hoje foi usada.<br>No fim de semana exibimos o resultado final e na segunda começa uma nova disputa! 🍫'
+        : 'Sua tentativa de hoje foi usada.<br>Volte amanhã para tentar de novo! 🍫';
+
     const conteudoDerrota =
         '<div class="result-icon-wrap"><div class="result-icon">⏰</div></div>' +
         '<h3 class="result-title">Tempo esgotado!</h3>' +
-        '<p class="result-desc">Sua tentativa de hoje foi usada.<br>Volte amanhã para tentar de novo! 🍫</p>' +
+        '<p class="result-desc">' + textoDerrota + '</p>' +
         '<div class="result-rank" id="maze-result-rank"></div>';
 
     painel.innerHTML =
@@ -809,6 +962,9 @@ function voltarParaLogin() {
         loginEl.style.animation = 'none';
         loginEl.offsetHeight;
         loginEl.style.animation = '';
+
+        // Atualiza a visibilidade caso tenha virado para sábado à meia-noite durante a partida
+        renderizarRankingLabirinto();
 
         voltandoParaLogin = false;
     }, 300);
@@ -990,6 +1146,21 @@ document.getElementById('maze-pin-input').addEventListener('keydown', function (
     }
 });
 
+// Detecta automaticamente a virada de sexta para sábado ou de domingo para segunda (00:00)
+function verificarViradaCicloLabirinto() {
+    const ciclo = obterCicloSemanalLabirinto();
+    if (ultimaChaveCicloLabirinto && ciclo.chaveCiclo !== ultimaChaveCicloLabirinto) {
+        renderizarRankingLabirinto();
+        carregarRanking();
+    }
+}
+
+setInterval(verificarViradaCicloLabirinto, 30000);
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+        verificarViradaCicloLabirinto();
+    }
+});
 
 // Inicia a aplicação
 carregarRanking();

@@ -780,6 +780,70 @@ h1 {
     text-align: center;
 }
 
+.maze-ranking-section.is-weekend-result {
+    margin-top: 0;
+    padding: 22px 18px;
+    border: 2px solid rgba(212, 163, 115, 0.35);
+    background: linear-gradient(180deg, #fffdf9 0%, #ffffff 100%);
+    box-shadow: 0 10px 28px rgba(107, 78, 61, 0.16);
+}
+
+.maze-weekend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    margin-bottom: 10px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #FFD700, #D4A373);
+    color: #4a3728;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    box-shadow: 0 2px 8px rgba(212, 163, 115, 0.35);
+}
+
+.maze-weekend-badge[hidden],
+.maze-weekend-notice[hidden] {
+    display: none !important;
+}
+
+.maze-weekend-notice {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fdf6ee 0%, #f9ece0 100%);
+    border: 1px solid rgba(212, 163, 115, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+}
+
+.maze-weekend-notice strong {
+    font-size: 12px;
+    color: var(--primary);
+}
+
+.maze-weekend-notice span {
+    font-size: 11px;
+    color: #7a6455;
+    line-height: 1.4;
+}
+
+.maze-champion-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 50px;
+    background: rgba(255, 215, 0, 0.25);
+    border: 1px solid rgba(212, 163, 115, 0.45);
+    color: #6B4E3D;
+    font-size: 9px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
 .maze-ranking-title {
     font-size: 17px;
     color: var(--primary);

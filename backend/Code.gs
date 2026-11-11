@@ -1,6 +1,7 @@
 var CONFIG_API = {
   ID_LOCAL: "1",
   FUSO: "America/Recife",
+  FUSO_OFFSET_MS: -3 * 60 * 60 * 1000, // UTC-3 fixo (America/Recife)
   CHAVE_CACHE: "dados_site_v2",
   CACHE_SEGUNDOS: 300,
   DURACAO_JOGO: 45,
@@ -14,7 +15,20 @@ var CONFIG_API = {
 };
 // MOTOR DE LEITURA (Envia dados para o site)
 function doGet(e) {
-  var json = CacheService.getScriptCache().get(CONFIG_API.CHAVE_CACHE);
+  var cache = CacheService.getScriptCache();
+  var json = cache.get(CONFIG_API.CHAVE_CACHE);
+  if (json) {
+    try {
+      var dadosCache = JSON.parse(json);
+      var cicloAtual = obterCicloSemanalLabirinto_();
+      // Se virou de sexta para sábado ou de domingo para segunda, regenera o cache na hora
+      if (!dadosCache.semanaLabirinto || dadosCache.semanaLabirinto.chaveCiclo !== cicloAtual.chaveCiclo) {
+        json = null;
+      }
+    } catch (err) {
+      json = null;
+    }
+  }
   if (!json) {
     json = gerarECachearDadosPublicos_();
   }
@@ -80,20 +94,92 @@ function montarDadosPublicos_() {
   for (var chave in ranking) {
     if (ranking[chave].totalGeral > 0) rankingFinal.push(ranking[chave]);
   }
+  var cicloLabirinto = obterCicloSemanalLabirinto_();
   return {
     ranking: rankingFinal,
     sabores: contagemSabores,
     clientes: listaParaCombobox,
-    rankingLabirinto: calcularRankingLabirinto_(resultadosLabirinto)
+    rankingLabirinto: calcularRankingLabirinto_(resultadosLabirinto, cicloLabirinto),
+    semanaLabirinto: cicloLabirinto
   };
 }
-// Top 10 do labirinto (melhor tempo por cliente, sem partidas pendentes)
-function calcularRankingLabirinto_(resultadosLabirinto) {
+/**
+ * Calcula o ciclo semanal atual do labirinto no fuso America/Recife (UTC-3).
+ * - Segunda a Sexta (diaISO 1..5): competição aberta; ranking mostra resultados de Seg 00:00 a Sex 23:59:59.
+ * - Sábado e Domingo (diaISO 6..7): competição encerrada; ranking exibe o resultado final da semana (Seg a Sex).
+ * - Virada de Domingo para Segunda (00:00): novo ciclo inicia automaticamente e o ranking zera.
+ */
+function obterCicloSemanalLabirinto_(dataRef) {
+  var agoraMs = dataRef instanceof Date ? dataRef.getTime() : Date.now();
+  var offsetMs = CONFIG_API.FUSO_OFFSET_MS;
+  var dataLocal = new Date(agoraMs + offsetMs);
+
+  var diaSemana = dataLocal.getUTCDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+  var diaISO = diaSemana === 0 ? 7 : diaSemana; // 1 = Seg ... 7 = Dom
+  var diasDesdeSegunda = diaISO - 1;
+
+  var inicioHojeLocalMs = Date.UTC(
+    dataLocal.getUTCFullYear(),
+    dataLocal.getUTCMonth(),
+    dataLocal.getUTCDate(),
+    0, 0, 0, 0
+  );
+  var inicioSegundaLocalMs = inicioHojeLocalMs - (diasDesdeSegunda * 86400000);
+  var fimSextaLocalMs = inicioSegundaLocalMs + (5 * 86400000) - 1;
+
+  var inicioSemanaMs = inicioSegundaLocalMs - offsetMs;
+  var fimSextaMs = fimSextaLocalMs - offsetMs;
+  var competicaoAtiva = diaISO >= 1 && diaISO <= 5;
+
+  var inicioFormatado = Utilities.formatDate(new Date(inicioSemanaMs), CONFIG_API.FUSO, "dd/MM");
+  var fimFormatado = Utilities.formatDate(new Date(fimSextaMs), CONFIG_API.FUSO, "dd/MM");
+  var chaveSegunda = Utilities.formatDate(new Date(inicioSemanaMs), CONFIG_API.FUSO, "yyyy-MM-dd");
+
+  return {
+    competicaoAtiva: competicaoAtiva,
+    ehFimDeSemana: !competicaoAtiva,
+    diaISO: diaISO,
+    inicioSemanaMs: inicioSemanaMs,
+    fimSextaMs: fimSextaMs,
+    inicioFormatado: inicioFormatado,
+    fimFormatado: fimFormatado,
+    chaveCiclo: chaveSegunda + "_" + (competicaoAtiva ? "ativa" : "encerrada")
+  };
+}
+function converterDataMs_(valor) {
+  if (!valor) return NaN;
+  if (valor instanceof Date) return valor.getTime();
+  var texto = String(valor).trim();
+  // Suporte a strings em formato brasileiro dd/MM/yyyy (com ou sem hora)
+  var m = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    var utcLocal = Date.UTC(
+      parseInt(m[3], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[1], 10),
+      parseInt(m[4] || "0", 10),
+      parseInt(m[5] || "0", 10),
+      parseInt(m[6] || "0", 10)
+    );
+    return utcLocal - CONFIG_API.FUSO_OFFSET_MS;
+  }
+  var d = new Date(texto);
+  return d.getTime();
+}
+function registroNaSemanaAtual_(dataValor, ciclo) {
+  var ts = converterDataMs_(dataValor);
+  if (isNaN(ts)) return false;
+  return ts >= ciclo.inicioSemanaMs && ts <= ciclo.fimSextaMs;
+}
+// Top 10 do labirinto na semana atual (Segunda a Sexta, melhor tempo por cliente, sem partidas pendentes)
+function calcularRankingLabirinto_(resultadosLabirinto, ciclo) {
+  var cicloAtual = ciclo || obterCicloSemanalLabirinto_();
   var melhorPorCliente = {};
   resultadosLabirinto.forEach(function (r) {
     var id = String(r.ID_cliente || r.ID_Cliente || "");
     var tempo = parseFloat(r.Tempo);
     if (!id || !(tempo > 0) || tempo >= CONFIG_API.TEMPO_PENDENTE) return;
+    if (!registroNaSemanaAtual_(r.Data, cicloAtual)) return;
     if (!melhorPorCliente[id] || tempo < melhorPorCliente[id].Tempo) {
       melhorPorCliente[id] = { ID_Cliente: id, Data: r.Data, Tempo: tempo };
     }
@@ -130,6 +216,13 @@ function doPost(e) {
 }
 // AÇÃO 1: Validar PIN e registrar a partida como pendente (9999)
 function validarAcesso_(idCliente, pinFornecido) {
+  var ciclo = obterCicloSemanalLabirinto_();
+  if (!ciclo.competicaoAtiva) {
+    return responderJSON({
+      sucesso: false,
+      erro: "A competição do labirinto funciona de segunda a sexta. No fim de semana exibimos o resultado da semana — volte na segunda-feira!"
+    });
+  }
   var cache = CacheService.getScriptCache();
   // Proteção contra força bruta do PIN
   var chaveFalhas = "pin_falhas_" + idCliente;
@@ -169,12 +262,15 @@ function validarAcesso_(idCliente, pinFornecido) {
     for (var j = 0; j < dadosLabirinto.length; j++) {
       var registro = dadosLabirinto[j];
       if (String(registro.ID_Cliente || registro.ID_cliente) !== idCliente) continue;
-      var dataRegistro = new Date(registro.Data);
-      if (isNaN(dataRegistro.getTime())) continue;
-      if (Utilities.formatDate(dataRegistro, CONFIG_API.FUSO, "dd/MM/yyyy") === dataStringHoje) {
+      var tsRegistro = converterDataMs_(registro.Data);
+      if (isNaN(tsRegistro)) continue;
+      if (Utilities.formatDate(new Date(tsRegistro), CONFIG_API.FUSO, "dd/MM/yyyy") === dataStringHoje) {
+        var msgTentativa = ciclo.diaISO === 5
+          ? "Você já usou a sua tentativa de hoje. No fim de semana exibimos o resultado final e na segunda começa uma nova disputa!"
+          : "Você já usou a sua tentativa de hoje. Volte amanhã para jogar!";
         return responderJSON({
           sucesso: false,
-          erro: "Você já usou a sua tentativa de hoje. Volte amanhã para jogar!"
+          erro: msgTentativa
         });
       }
     }
@@ -284,9 +380,14 @@ function lerCachePublico_() {
 }
 // Ranking atual: do cache, se existir; senão, lê só a aba do labirinto
 function obterRankingLabirintoAtual_(ss) {
+  var ciclo = obterCicloSemanalLabirinto_();
   var dados = lerCachePublico_();
-  if (dados && Array.isArray(dados.rankingLabirinto)) return dados.rankingLabirinto;
-  return calcularRankingLabirinto_(extrairDados(ss, "Resultados_Labirinto"));
+  if (dados && Array.isArray(dados.rankingLabirinto)) {
+    return dados.rankingLabirinto.filter(function (item) {
+      return registroNaSemanaAtual_(item.Data, ciclo);
+    });
+  }
+  return calcularRankingLabirinto_(extrairDados(ss, "Resultados_Labirinto"), ciclo);
 }
 /**
  * Insere o novo tempo no ranking guardado no cache, sem reler a planilha.
@@ -295,29 +396,35 @@ function obterRankingLabirintoAtual_(ss) {
  * Preserva a validade original do cache para não "congelar" os demais dados.
  */
 function atualizarRankingLabirintoNoCache_(ss, idCliente, tempo, data) {
+  var ciclo = obterCicloSemanalLabirinto_();
   var dados = lerCachePublico_();
   if (!dados || !Array.isArray(dados.rankingLabirinto)) {
     // Sem cache: calcula só o ranking (1 aba); o próximo GET/aquecimento recria o cache
-    return calcularRankingLabirinto_(extrairDados(ss, "Resultados_Labirinto"));
+    return calcularRankingLabirinto_(extrairDados(ss, "Resultados_Labirinto"), ciclo);
   }
-  var lista = dados.rankingLabirinto.slice();
-  var existente = null;
-  for (var i = 0; i < lista.length; i++) {
-    if (String(lista[i].ID_Cliente) === String(idCliente)) {
-      existente = lista[i];
-      break;
+  var lista = dados.rankingLabirinto.filter(function (item) {
+    return registroNaSemanaAtual_(item.Data, ciclo);
+  });
+  if (registroNaSemanaAtual_(data, ciclo)) {
+    var existente = null;
+    for (var i = 0; i < lista.length; i++) {
+      if (String(lista[i].ID_Cliente) === String(idCliente)) {
+        existente = lista[i];
+        break;
+      }
     }
-  }
-  if (existente) {
-    if (tempo < Number(existente.Tempo)) {
-      existente.Tempo = tempo;
-      existente.Data = data;
+    if (existente) {
+      if (tempo < Number(existente.Tempo)) {
+        existente.Tempo = tempo;
+        existente.Data = data;
+      }
+    } else {
+      lista.push({ ID_Cliente: String(idCliente), Data: data, Tempo: tempo });
     }
-  } else {
-    lista.push({ ID_Cliente: String(idCliente), Data: data, Tempo: tempo });
   }
   lista = ordenarTop10_(lista);
   dados.rankingLabirinto = lista;
+  dados.semanaLabirinto = ciclo;
   var restante = CONFIG_API.CACHE_SEGUNDOS;
   if (dados.geradoEm) {
     restante = Math.floor(CONFIG_API.CACHE_SEGUNDOS - (Date.now() - dados.geradoEm) / 1000);
